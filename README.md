@@ -2,7 +2,7 @@
 
 A single page of browser games, served by a Cloudflare Worker at https://games.yakton.net.
 
-Games: Traffic Racer, Pizza Rush, Pizza Clicker, Snake, 2048, Memory Match, Tic-Tac-Toe, Minesweeper, Reaction Time.
+Games: Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer, Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Road Hop, Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
 
 ## Deploy from GitHub
 
@@ -19,6 +19,10 @@ Games: Traffic Racer, Pizza Rush, Pizza Clicker, Snake, 2048, Memory Match, Tic-
 
 ## Add a game
 
-Write a function `myGame(el)` that draws into `el` (see `public/cars.js`), and add an entry to the `G` list in `public/boot.js`.
+Write a function `myGame(el)` that draws into `el` (see `public/more.js`), and add an entry to the `G` list in `public/boot.js`.
 Use `st("text")` for the status line and `best(id, score)` to keep a local high score.
 Return a cleanup function if you start timers.
+
+## Online chess
+
+Online games use a Durable Object (`Room` in `src/index.js`) that relays moves between two players with the same room code. The `durable_objects` and `migrations` entries in `wrangler.jsonc` set it up on the first deploy.

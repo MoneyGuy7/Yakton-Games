@@ -1,13 +1,19 @@
 const G=[
+  {id:'clicker',name:'Pizza Clicker',tag:'Idle',a:'#f2a33a',b:'#8f2a1a',help:'Click the pizza, buy ovens, cooks and trucks, and grab the golden pizza when it pops up. Progress saves.',run:clicker},
+  {id:'chess',name:'Chess',tag:'Board',a:'#94a3b8',b:'#17171a',help:'Play the computer at four skill levels, a friend on this screen, or a friend online with a room code.',run:chess},
   {id:'racer',name:'Traffic Racer',tag:'Cars',a:'#e63027',b:'#17171a',help:'Left and right (or A and D) to steer. Hold Space or Up for nitro. On a phone, touch the left or right side.',run:racer},
+  {id:'dash',name:'Cube Dash',tag:'Arcade',a:'#7c3aed',b:'#17171a',help:'Jump over the spikes and blocks. Space, Up or click.',run:dash},
+  {id:'tetris',name:'Block Drop',tag:'Puzzle',a:'#06b6d4',b:'#17171a',help:'Arrows move, Up rotates, Down drops one step, Space slams it down. Tap rotates on a phone.',run:tetris},
   {id:'rush',name:'Pizza Rush',tag:'Cars',a:'#ffd21f',b:'#17171a',help:'Arrow keys or WASD to drive, Space to brake. Pick up at the P, deliver to the $. Each delivery adds 10 seconds.',run:rush},
-  {id:'clicker',name:'Pizza Clicker',tag:'Idle',a:'#f2a33a',b:'#8f2a1a',help:'Click the pizza, then buy ovens, cooks and cars to make pizza on their own. Your progress saves.',run:clicker},
+  {id:'flappy',name:'Flappy Pizza',tag:'Arcade',a:'#38bdf8',b:'#17171a',help:'Space, click or tap to flap through the gaps.',run:flappy},
+  {id:'breakout',name:'Brick Breaker',tag:'Arcade',a:'#f43f5e',b:'#17171a',help:'Mouse or arrow keys to move. Click or Space to launch the ball.',run:breakout},
+  {id:'cross',name:'Road Hop',tag:'Arcade',a:'#22c55e',b:'#17171a',help:'Get across every road without getting hit. Cars get faster each time.',run:cross},
   {id:'snake',name:'Snake',tag:'Arcade',a:'#2f9e6f',b:'#17171a',help:'Arrow keys or WASD. Swipe on a phone.',run:snake},
   {id:'react',name:'Reaction Time',tag:'Arcade',a:'#3ddc84',b:'#17171a',help:'Click as soon as the box turns green.',run:react},
   {id:'2048',name:'2048',tag:'Puzzle',a:'#f2c14e',b:'#17171a',help:'Slide tiles with arrow keys or swipes. Matching numbers merge.',run:g2048},
   {id:'memory',name:'Memory Match',tag:'Puzzle',a:'#e63027',b:'#f4f4f0',help:'Flip two cards at a time and find the pairs.',run:memory},
   {id:'mines',name:'Minesweeper',tag:'Puzzle',a:'#7a7a86',b:'#17171a',help:'Numbers count the mines next to a square. Your first click is safe.',run:mines},
-  {id:'ttt',name:'Tic-Tac-Toe',tag:'Puzzle',a:'#5b6cff',b:'#17171a',help:'Three in a row beats the computer.',run:ttt}
+  {id:'ttt',name:'Tic-Tac-Toe',tag:'Board',a:'#5b6cff',b:'#17171a',help:'Three in a row beats the computer.',run:ttt}
 ];
 let tag='All';
 function load(id){

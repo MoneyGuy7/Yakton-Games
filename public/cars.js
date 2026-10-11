@@ -1,5 +1,5 @@
 function racer(el){
-  const W=360,H=560,c=mk('canvas',{width:W,height:H}),x=c.getContext('2d'),LC=[67,142,217,292],cols=['#3b82f6','#22c55e','#f97316','#a855f7','#eab308','#e5e7eb'],k={};
+  const W=360,H=560,c=mk('canvas',{width:W,height:H}),x=c.getContext('2d'),LC=[67,142,217,292],cols=['#3b82f6','#22c55e','#f97316','#a855f7','#eab308','#e5e7eb'],k={};el.append(c);
   let px,cars,sp,dist,over,nit,off,bonus,tdir,gap,msg,msgT;
   const score=()=>Math.floor(dist/10)+bonus;
   function reset(){px=LC[1];cars=[];sp=6;dist=0;over=0;nit=100;off=0;bonus=0;tdir=0;gap=100;msgT=0;st('Dodge traffic. Hold Space or Up for nitro.')}
@@ -82,17 +82,3 @@ function rush(el){
   reset();const t=setInterval(tick,1000/60);return()=>clearInterval(t);
 }
 
-function clicker(el){
-  const U=[['Oven',15,1],['Pizza cook',100,5],['Delivery car',600,25],['Pizza factory',3000,120],['Pizza planet',20000,700]];
-  let s={n:0,c:1,own:U.map(()=>0)};try{Object.assign(s,JSON.parse(localStorage.getItem('pc')))}catch{}
-  const fmt=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e4?(n/1e3).toFixed(1)+'K':String(Math.floor(n));
-  const rate=()=>U.reduce((t,u,i)=>t+u[2]*s.own[i],0),save=()=>{try{localStorage.setItem('pc',JSON.stringify(s))}catch{}};
-  const big=mk('div',{class:'big'}),pz=mk('button',{class:'pz','aria-label':'Make pizza'}),shop=mk('div',{class:'shop'});el.append(big,pz,shop);
-  const items=[['Thicker crust',()=>Math.ceil(50*1.7**(s.c-1)),()=>s.c++,()=>s.c],...U.map((u,i)=>[u[0],()=>Math.ceil(u[1]*1.15**s.own[i]),()=>s.own[i]++,()=>s.own[i]])];
-  const bs=items.map(it=>{const b=mk('button');b.onclick=()=>{const p=it[1]();if(s.n>=p){s.n-=p;it[2]();upd()}};shop.append(b);return b});
-  function upd(){big.textContent=fmt(s.n)+' pizzas';st(`${fmt(rate())} per second, ${s.c} per click`);
-    bs.forEach((b,i)=>{const p=items[i][1]();b.disabled=s.n<p;b.textContent=`${items[i][0]} (${items[i][3]()}) - ${fmt(p)}`})}
-  pz.onclick=()=>{s.n+=s.c;upd()};
-  const t=setInterval(()=>{s.n+=rate()/10;upd()},100),sv=setInterval(save,3000);upd();
-  return()=>{clearInterval(t);clearInterval(sv);save()};
-}
