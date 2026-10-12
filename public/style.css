@@ -65,3 +65,8 @@ canvas{max-width:100%;max-height:72vh;height:auto;background:#0d0b1f;border-radi
 .sq.to{background-image:radial-gradient(circle,#0007 0 17%,#0000 19%)}
 .sq.cap{background-image:radial-gradient(circle,#0000 0 58%,#e63027bb 61%)}
 .sq.chk{background-image:radial-gradient(#e63027,#0000 72%)}
+.tile{box-shadow:0 4px 0 #0008;transition:transform .12s,box-shadow .12s}
+.tile:hover{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 10px 0 #0008}
+.tile:active{transform:translateY(0)}
+#q{background:#0e0e10 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239a9aa3' stroke-width='2'%3E%3Ccircle cx='6.5' cy='6.5' r='5'/%3E%3Cpath d='M10.5 10.5 15 15'/%3E%3C/svg%3E") no-repeat 10px 50%;padding-left:34px}
+#stage{border:2px solid #ffffff14;box-shadow:0 0 40px #ffd21f14}

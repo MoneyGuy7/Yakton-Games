@@ -1,4 +1,9 @@
 const G=[
+  {id:'pong',name:'Pong Online',tag:'Multiplayer',a:'#ffd21f',b:'#17171a',help:'Play a bot or a friend with the same room code. Up and Down or W and S to move. First to 7 wins.',run:pong},
+  {id:'stack',name:'Stack',tag:'Arcade',a:'#7c3aed',b:'#1b1b4a',help:'Click, tap or press Space to drop the sliding block. Misaligned parts get cut off.',run:stack},
+  {id:'hop',name:'Sky Hop',tag:'Arcade',a:'#38bdf8',b:'#2f9e44',help:'Bounce up the platforms. Arrow keys, A and D, or drag to steer. Do not fall.',run:hop},
+  {id:'heli',name:'Heli Duel',tag:'Multiplayer',a:'#3b82f6',b:'#e63027',help:'Dogfight a friend with the same room code, or a bot. Move with arrows or WASD, hold Space to shoot.',run:heli},
+  {id:'lanes',name:'Subway Rush',tag:'Runner',a:'#f2784b',b:'#2b1b4a',help:'Swipe or use arrows. Left and right change lane, Up jumps, Down slides. Grab coins, dodge trains.',run:lanes},
   {id:'clicker',name:'Pizza Clicker',tag:'Idle',a:'#f2a33a',b:'#8f2a1a',help:'Click the pizza, buy ovens, cooks and trucks, and grab the golden pizza when it pops up. Progress saves.',run:clicker},
   {id:'chess',name:'Chess',tag:'Board',a:'#94a3b8',b:'#17171a',help:'Play the computer at four skill levels, a friend on this screen, or a friend online with a room code.',run:chess},
   {id:'racer',name:'Traffic Racer',tag:'Cars',a:'#e63027',b:'#17171a',help:'Left and right (or A and D) to steer. Hold Space or Up for nitro. On a phone, touch the left or right side.',run:racer},

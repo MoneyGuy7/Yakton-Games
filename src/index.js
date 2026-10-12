@@ -1,4 +1,4 @@
-// Serves everything in /public, relays chess games between two players, adds security headers.
+// Serves everything in /public, relays chess and multiplayer games between two players, adds security headers.
 export class Room {
   constructor(ctx) { this.ctx = ctx; }
   async fetch(req) {
