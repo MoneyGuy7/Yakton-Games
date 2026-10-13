@@ -70,3 +70,15 @@ canvas{max-width:100%;max-height:72vh;height:auto;background:#0d0b1f;border-radi
 .tile:active{transform:translateY(0)}
 #q{background:#0e0e10 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239a9aa3' stroke-width='2'%3E%3Ccircle cx='6.5' cy='6.5' r='5'/%3E%3Cpath d='M10.5 10.5 15 15'/%3E%3C/svg%3E") no-repeat 10px 50%;padding-left:34px}
 #stage{border:2px solid #ffffff14;box-shadow:0 0 40px #ffd21f14}
+
+/* Chess, wooden board */
+.cb{border:12px solid #4a2f19;border-radius:10px;background:#4a2f19;box-shadow:0 18px 44px #000b,inset 0 0 0 2px #0006}
+.sq{position:relative;font-family:"Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols","DejaVu Sans",serif;font-size:min(3.1rem,8.8vw);transition:background-color .12s,filter .12s}
+.sq.l{background-color:#f0d9b5;background-image:linear-gradient(135deg,#fff3,#0000)}.sq.d{background-color:#b58863;background-image:linear-gradient(135deg,#fff2,#0001)}
+.sq.w{color:#fffdf2;text-shadow:0 0 1px #000,0 0 2px #000,0 3px 3px #0008}
+.sq.b{color:#17120d;text-shadow:0 1px 0 #fff5,0 3px 3px #0008}
+.sq.l.sel,.sq.d.sel{background-color:#f7e463;background-image:none}
+.sq.last{box-shadow:inset 0 0 0 100px #ffe14d44}
+.sq:hover{filter:brightness(1.12)}
+.sq.w:hover,.sq.b:hover{transform:translateY(-1px)}
+canvas{box-shadow:0 12px 34px #0009}
