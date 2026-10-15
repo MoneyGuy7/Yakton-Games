@@ -77,25 +77,6 @@ function breakout(el){
   reset();const i=setInterval(tick,1000/60);return()=>clearInterval(i);
 }
 
-function cross(el){
-  const C=11,R=12,S=40,W=C*S,H=R*S,c=mk('canvas',{width:W,height:H}),x=c.getContext('2d'),cc=['#3b82f6','#22c55e','#f97316','#a855f7','#eab308','#e5e7eb'];el.append(c);
-  let px,py,rows,lv=0,sc=0,over=0;
-  function gen(){rows=[];for(let r=0;r<R;r++){if(r==0||r==R-1||Math.random()<.25){rows.push(null);continue}
-    const v=(Math.random()<.5?1:-1)*(1+Math.random()*1.5+lv*.25),cars=[];let cx=rnd(100);while(cx<W){const L=S+rnd(2)*30;cars.push({x:cx,L,col:cc[rnd(6)]});cx+=L+90+rnd(140)}rows.push({v,cars})}}
-  function reset(){px=5;py=R-1}
-  function move(d){if(over)return;px=Math.max(0,Math.min(C-1,px+(d=='r')-(d=='l')));py=Math.min(R-1,py+(d=='d')-(d=='u'));
-    if(py==0){sc++;lv++;gen();reset();st('Crossings: '+sc)}}
-  function tick(){
-    if(!over){rows.forEach(r=>{if(r)r.cars.forEach(o=>{o.x+=r.v;if(r.v>0&&o.x>W+20)o.x=-o.L-rnd(80);if(r.v<0&&o.x<-o.L-20)o.x=W+rnd(80)})});
-      const r=rows[py];if(r&&r.cars.some(o=>px*S+6<o.x+o.L&&px*S+S-6>o.x)){over=1;st(`Splat. ${sc} crossings. Best ${best('cross',sc)}. Click or press Enter.`)}}
-    rows.forEach((r,i)=>{x.fillStyle=r?'#35353a':'#3d8b4a';x.fillRect(0,i*S,W,S);if(r){x.fillStyle='#ffffff30';for(let j=0;j<W;j+=40)x.fillRect(j,i*S+S-2,20,2);
-      r.cars.forEach(o=>{x.fillStyle=o.col;x.fillRect(o.x,i*S+7,o.L,S-14);x.fillStyle='#0b1220';const wx=r.v>0?o.x+o.L-14:o.x+4;x.fillRect(wx,i*S+10,10,S-20)})}});
-    x.beginPath();x.arc(px*S+20,py*S+20,13,0,7);x.fillStyle='#f2c14e';x.fill();x.fillStyle='#e63027';x.fillRect(px*S+14,py*S+14,5,5);x.fillRect(px*S+22,py*S+20,5,5);
-  }
-  dirs(c,move);on(document,'keydown',e=>{if(over&&e.key=='Enter'){lv=sc=over=0;gen();reset()}});on(c,'click',()=>{if(over){lv=sc=over=0;gen();reset()}});
-  gen();reset();st('Cross all the roads. Arrow keys, WASD or swipe.');const i=setInterval(tick,1000/60);return()=>clearInterval(i);
-}
-
 function tetris(el){
   const W=10,H=20,S=24,c=mk('canvas',{width:W*S,height:H*S}),x=c.getContext('2d');el.append(c);
   const SH=[[[0,0],[-1,0],[1,0],[2,0]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[-1,0],[1,0],[0,1]],[[0,0],[-1,0],[1,0],[1,1]],[[0,0],[-1,0],[1,0],[-1,1]],[[0,0],[1,0],[0,1],[-1,1]],[[0,0],[-1,0],[0,1],[1,1]]],

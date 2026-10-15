@@ -2,7 +2,7 @@
 
 A single page of browser games, served by a Cloudflare Worker at https://games.yakton.net.
 
-Games: Chess (vs computer, two players, or online with a room code), Connect Four (computer, local or online), Pong Online, Heli Duel (online), Road Hop 3D (isometric, Crossy Road style), Subway Rush, Pizza Clicker, Traffic Racer, Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
+Games: Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
 
 ## Deploy from GitHub
 
@@ -11,6 +11,10 @@ Games: Chess (vs computer, two players, or online with a room code), Connect Fou
 3. Leave the build command empty. Set the deploy command to `npx wrangler deploy`.
 4. Every push to the main branch now deploys. The `routes` entry in `wrangler.jsonc` attaches
    games.yakton.net (the yakton.net zone must be on your Cloudflare account).
+
+## Sound and settings
+
+`public/site.js` has the sound engine (`SFX.play("hop")`, no audio files needed) and the Settings panel (sound on or off, volume, press M to mute). Settings are saved in the browser.
 
 ## Run locally
 
@@ -26,7 +30,3 @@ Return a cleanup function if you start timers.
 ## Online chess
 
 Online games use a Durable Object (`Room` in `src/index.js`) that relays moves between two players with the same room code. The `durable_objects` and `migrations` entries in `wrangler.jsonc` set it up on the first deploy.
-
-## Engine
-
-`public/engine.js` loads first. It runs every game loop on requestAnimationFrame (smooth on 60/120/144 Hz screens) and renders canvases at the device pixel ratio (sharp on phones). `public/v2.js` holds Subway Rush, Road Hop 3D and Connect Four; `netRoom(code, handlers)` there is a tiny helper for new online games.
