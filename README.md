@@ -2,7 +2,7 @@
 
 A single page of browser games, served by a Cloudflare Worker at https://games.yakton.net.
 
-Games: Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
+Games: Heli Royale (battle royale, `public/royal.js`), Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
 
 ## Deploy from GitHub
 
@@ -26,6 +26,10 @@ Games: Chess (vs computer, two players, or online with a room code), Pizza Click
 Write a function `myGame(el)` that draws into `el` (see `public/more.js`), and add an entry to the `G` list in `public/boot.js`.
 Use `st("text")` for the status line and `best(id, score)` to keep a local high score.
 Return a cleanup function if you start timers.
+
+## Heli Royale rooms
+
+Heli Royale lobbies (up to 8 pilots) use a second Durable Object, `Arena`, reached at `/arena/ROOMCODE`. The `ARENAS` binding and the `v2` migration in `wrangler.jsonc` create it on the next deploy. The first pilot in is the host: their browser runs the bots, the storm and the crates, and the server only relays messages.
 
 ## Online chess
 
