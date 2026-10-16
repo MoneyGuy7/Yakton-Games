@@ -2,7 +2,7 @@
 
 A single page of browser games, served by a Cloudflare Worker at https://games.yakton.net.
 
-Games: Heli Royale (battle royale, `public/royal.js`), Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash, Block Drop, Pizza Rush, Flappy Pizza, Brick Breaker, Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
+Games: Heli Royale (battle royale, `public/royal.js`), Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash (Geometry Dash style, 3 levels with ship and gravity-flip modes, pads, orbs, saws, coins, practice mode and cube colors, `public/cubedash.js`), Block Drop, Pizza Rush (city delivery with traffic, tips and a Garage, `public/pizzarush.js`), Flappy Pizza, Brick Breaker, Jungle Dash (side-scrolling temple runner with a boulder chasing you, `public/jungle.js`), Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style with a gem Garage for upgrades and cars, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Link Blast (connect-the-dots shooter, `public/linkblast.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
 
 ## Deploy from GitHub
 

@@ -34,26 +34,6 @@ function flappy(el){
   reset();const i=setInterval(tick,1000/60);return()=>clearInterval(i);
 }
 
-function dash(el){
-  const W=640,H=360,G0=300,c=mk('canvas',{width:W,height:H}),x=c.getContext('2d');el.append(c);let y,vy,ob,sp,d,over,gap,rot;
-  function reset(){y=G0-30;vy=0;ob=[];sp=5;d=0;over=0;gap=300;rot=0;st('Space, Up or click to jump.')}
-  function jump(){if(over)reset();else if(y>=G0-30)vy=-11.5}
-  function tick(){
-    if(!over){sp=Math.min(10,sp+.0015);d+=sp;gap-=sp;
-      if(gap<0){const t=rnd(3);ob.push({x:W+20,t,w:t==2?(2+rnd(2))*28:t?32:28,h:t==1?32:28});gap=rnd(200)+300+sp*10}
-      ob.forEach(o=>o.x-=sp);ob=ob.filter(o=>o.x>-120);vy+=.62;y+=vy;
-      if(y>=G0-30){y=G0-30;vy=0;rot=Math.round(rot/1.5708)*1.5708}else rot+=.11;
-      for(const o of ob){const i=o.t==1?0:4;if(106>o.x+i&&84<o.x+o.w-i&&y+26>G0-o.h+(o.t==1?0:8)){over=1;st(`Crashed at ${Math.floor(d/10)}. Best ${best('dash',Math.floor(d/10))}. Click to retry.`)}}
-      if(!over)st('Distance '+Math.floor(d/10))}
-    x.fillStyle='#2b1b4a';x.fillRect(0,0,W,H);x.fillStyle='#ffffff14';for(let i=0;i<9;i++)x.fillRect(i*80-(d*.3)%80,0,3,G0);
-    x.fillStyle='#0d0b1f';x.fillRect(0,G0,W,H);x.fillStyle='#ffd21f';x.fillRect(0,G0,W,3);
-    ob.forEach(o=>{if(o.t==1){x.fillStyle='#e63027';x.fillRect(o.x,G0-32,32,32)}else{x.fillStyle='#fff';for(let i=0;i<o.w/28;i++){x.beginPath();x.moveTo(o.x+i*28,G0);x.lineTo(o.x+i*28+14,G0-28);x.lineTo(o.x+i*28+28,G0);x.fill()}}});
-    x.save();x.translate(95,y+15);x.rotate(rot);x.fillStyle='#ffd21f';x.fillRect(-15,-15,30,30);x.fillStyle='#111';x.fillRect(-8,-6,5,8);x.fillRect(3,-6,5,8);x.restore();
-  }
-  on(document,'keydown',e=>{if(e.key==' '||e.key=='ArrowUp'||e.key=='w'){e.preventDefault();jump()}});on(c,'pointerdown',jump);
-  reset();const i=setInterval(tick,1000/60);return()=>clearInterval(i);
-}
-
 function breakout(el){
   const W=480,H=400,c=mk('canvas',{width:W,height:H}),x=c.getContext('2d'),k={};el.append(c);let px,br,bx,by,vx,vy,sc,lives,lv,run,over;
   function bricks(){br=[];for(let r=0;r<5+Math.min(lv,3);r++)for(let i=0;i<10;i++)br.push({x:i*48+4,y:40+r*22,h:r*45,on:1})}

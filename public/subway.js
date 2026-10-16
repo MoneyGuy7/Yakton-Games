@@ -1,8 +1,9 @@
 // Subway Rush: a three lane runner in real perspective.
-// Obstacles spawn far away so you can see them coming, trains get a warning sign and horn,
-// every row always has a way through, and you have two hearts so one mistake is not the end.
+// Obstacles: low barriers (jump), overhead signs (slide), concrete walls, parked trains, fast moving trains,
+// holes in the track (switch lane) and short gaps (jump). Speed keeps ramping up the longer you run.
+// Every row is built around a safe lane so there is always a way through, and you have two hearts.
 function lanes(el){
-  const W=360,H=560,LW=96,F=16,HY=170,Y0=480,DMAX=70,DPR=Math.min(2,window.devicePixelRatio||1);
+  const W=360,H=560,LW=96,F=16,HY=170,Y0=480,DMAX=100,DPR=Math.min(2,window.devicePixelRatio||1);
   const c=mk('canvas',{width:W*DPR,height:H*DPR}),x=c.getContext('2d');
   c.style.cssText=`width:min(${W}px,100%,calc(72vh*${(W/H).toFixed(4)}));height:auto;max-height:none`;
   el.append(c);x.scale(DPR,DPR);
@@ -24,44 +25,88 @@ function lanes(el){
   const score=()=>Math.floor(dist/2)+coins*5;
   function hud(){
     const s=over?`Busted! ${score()} points, ${coins} coins. Best ${best('lanes',score())}. Tap or press Enter.`
-      :started?`${score()} pts   ${coins} coins   Total coins ${total}`
+      :started?`${score()} pts   ${coins} coins   Speed ${Math.round(v*3.6)} km/h`
       :'Tap or press any key to start. Swipe or arrows: left, right, Up jump, Down slide.';
     if(s!==lastTxt){lastTxt=s;st(s)}
   }
 
   /* ---------- level generation ---------- */
+  const ob=(k,l,d,len,ex)=>objs.push(Object.assign({k,lane:l,d,len,horn:0},ex||{}));
   function coinLine(l,n,d0,air){for(let i=0;i<n;i++)objs.push({k:'coin',lane:l,d:d0+i*2.2,len:0,air:air?1:0})}
   function coinArc(l,d){for(let i=-1;i<=1;i++)objs.push({k:'coin',lane:l,d:d+i*1.6,len:0,air:1})}
+  const others=s=>[0,1,2].filter(l=>l!=s);
+  const pick=a=>a[rnd(a.length)];
+  const holeLen=()=>Math.max(12,v*.7+6);
   function spawnRow(){
-    const lv=Math.min(1,t/100),d=DMAX;let len=1.2,pat;
-    const easy=rowN<3;
-    const pool=easy?[['coins',30],['bar',20]]
-      :[['coins',22],['bar',24],['over',18],['train',lv<.05?0:24],['mix',lv<.3?0:16]];
-    let tot=pool.reduce((a,b)=>a+b[1],0),r=Math.random()*tot;
-    pat=pool[0][0];for(const[k,w]of pool){if(r<w){pat=k;break}r-=w}
+    const lv=clamp(t/90,0,1),d=DMAX;let len=2,gapMin=0;
+    const pool=rowN<3?[['coins',3],['jump',3],['slide',2]]
+      :[['coins',lv<.5?2:1],['jump',3],['slide',3],['course',2+4*lv],['blocks',3],['train',3],
+        ['mtrain',lv<.12?0:3.5],['holes',lv<.1?0:3],['gaps',lv<.05?0:2],['stairs',lv<.3?0:3]];
+    let tot=pool.reduce((a,b)=>a+b[1],0),r=Math.random()*tot,pat=pool[0][0];
+    for(const[k,w]of pool){if(r<w){pat=k;break}r-=w}
     if(pat==lastPat&&pat!='coins')pat='coins';
     lastPat=pat;rowN++;
-    const free=rnd(3);
+    const safe=rnd(3),oth=others(safe);
     if(pat=='coins'){
-      const l=rnd(3);coinLine(l,6,d);len=13;
-      if(lv>.3&&Math.random()<.5){coinLine((l+1+rnd(2))%3,5,d+3)}
-    }else if(pat=='bar'||pat=='over'){
-      const ls=[0,1,2].filter(l=>lv<.3?l!=free:Math.random()<.8);
-      const use=ls.length?ls:[0];
-      use.forEach(l=>objs.push({k:pat,lane:l,d,len:1.2}));
-      if(pat=='bar')coinArc(use[rnd(use.length)],d+1);
-      else coinLine(free,5,d-3);
-    }else if(pat=='train'||pat=='mix'){
+      const l=rnd(3);coinLine(l,7,d);len=15;
+      if(lv>.3&&Math.random()<.5)coinLine(pick(others(l)),5,d+3);
+    }else if(pat=='jump'||pat=='slide'){
+      const k=pat=='jump'?'bar':'over';
+      const use=lv<.2?[pick(oth)]:(lv<.5?oth:(Math.random()<.35?[0,1,2]:oth));
+      use.forEach(l=>ob(k,l,d,1.2));len=2;
+      if(k=='bar')coinArc(use[rnd(use.length)],d+1);
+      if(!use.includes(safe))coinLine(safe,5,d-3);
+    }else if(pat=='course'){
+      // every lane gets something different; at least one lane needs only a jump, a slide or nothing
+      let walls=0;
+      for(let l=0;l<3;l++){
+        let kk=pick(['bar','over','none','wall']);
+        if(kk=='wall'&&(walls>=1||l==safe))kk=pick(['bar','over']);
+        if(kk=='wall')walls++;
+        if(kk=='none')coinLine(l,4,d-2);else if(kk=='wall')ob('wall',l,d,2.5);else ob(kk,l,d,1.2);
+      }
+      len=3;
+    }else if(pat=='blocks'){
+      len=2.5;
+      oth.forEach(l=>{if(Math.random()<.5)ob('wall',l,d,2.5);else{const tl=R(8,14);ob('train',l,d,tl,{col:pick(TRAIN)});len=Math.max(len,tl)}});
+      if(lv>.3&&Math.random()<.6)ob(pick(['bar','over']),safe,d+2,1.2);else coinLine(safe,5,d+1);
+    }else if(pat=='train'){
       len=R(15,25);
-      const two=lv>.35&&Math.random()<.45&&pat=='train';
-      const tl=two?[0,1,2].filter(l=>l!=free):[rnd(3)];
-      tl.forEach(l=>objs.push({k:'train',lane:l,d,len,col:TRAIN[rnd(4)],horn:0}));
-      const open=[0,1,2].filter(l=>!tl.includes(l));
-      if(pat=='mix'){const b=open[rnd(open.length)];objs.push({k:Math.random()<.5?'bar':'over',lane:b,d:d+2,len:1.2});
-        const c2=open.find(l=>l!=b);if(c2!=null)coinLine(c2,6,d)}
-      else if(open.length)coinLine(open[rnd(open.length)],6,d+2);
+      const two=lv>.3&&Math.random()<.5;
+      const tl=two?oth:[pick(oth)];
+      tl.forEach(l=>ob('train',l,d,len,{col:pick(TRAIN)}));
+      coinLine(safe,6,d+2);
+    }else if(pat=='mtrain'){
+      // Fast trains close in on you. They are placed so they reach you only after the rows ahead
+      // have cleared, and the next row waits until they have gone by, so there is always time to switch.
+      len=R(12,20);
+      const two=lv>.5&&Math.random()<.5;
+      const tl=two?oth:[pick(oth)];
+      const u=R(7,10)+lv*8;
+      const E=objs.reduce((m,o)=>o.k=='coin'?m:Math.max(m,o.d+o.len),0);
+      const Ta=Math.max(DMAX/(v+u),E/v+.9),dR=Ta*v;
+      tl.forEach(l=>ob('train',l,Ta*(v+u),len,{col:pick(TRAIN),u}));
+      others(tl[0]).filter(l=>!tl.includes(l)).forEach(l=>{
+        if(l!=safe&&lv>.3)ob(pick(['bar','over']),l,dR+3,1.2);else coinLine(l,6,dR+2)});
+      gapMin=v*(Ta+len/(v+u)+.5-DMAX/v);
+      len=Math.max(0,dR-DMAX)+4;
+    }else if(pat=='holes'){
+      const hl=holeLen();len=hl;
+      const hs=lv<.4?[pick(oth)]:oth;
+      hs.forEach(l=>ob('hole',l,d,hl));
+      const rest=oth.filter(l=>!hs.includes(l));
+      rest.forEach(l=>ob(pick(['bar','over']),l,d+hl/2,1.2));
+      if(lv>.5&&Math.random()<.5){ob('gap',safe,d+hl*.4,3);coinArc(safe,d+hl*.4+1.5)}else coinLine(safe,Math.floor(hl/2.2),d+1);
+    }else if(pat=='gaps'){
+      len=3;[0,1,2].forEach(l=>ob('gap',l,d,3));coinArc(1,d+1.5);
+    }else if(pat=='stairs'){
+      // three trains one after another in different lanes. Wait in the last lane, then cross over
+      // through the gap in the middle lane (g) once the first two have gone by.
+      const S=Math.max(11,v*.8),g=Math.max(6,v*.45),L=S-g,order=Math.random()<.5?[0,1,2]:[2,1,0];
+      order.forEach((l,i)=>ob('train',l,d+i*S,L,{col:pick(TRAIN)}));
+      len=2*S+L;coinLine(order[2],5,d+S*.5);
     }
-    gapLeft=len+v*(1.3-.5*lv);
+    gapLeft=Math.max(len+v*(1.15-.55*lv)+4,gapMin);
   }
 
   /* ---------- gameplay ---------- */
@@ -76,6 +121,7 @@ function lanes(el){
   }
   function hit(o){
     o.hit=1;hearts--;inv=1.6;shake=.35;sfx('crash');
+    if(o.k=='hole'||o.k=='gap'){vy=640;jy=.01;sl=0;pend=false}   // you scramble out of the hole
     for(let i=0;i<12;i++)parts.push({x:X((plane-1)*LW,0),y:Y0-30-jy,vx:R(-120,120),vy:R(-220,40),life:R(.4,.8),col:['#ffd21f','#e63027','#fff'][rnd(3)]});
     if(hearts<=0){over=true;deadT=0;sfx('lose')}
   }
@@ -85,16 +131,21 @@ function lanes(el){
     if(shake>0)shake-=dt;
     if(over){deadT+=dt;hud();return}
     if(!started){hud();return}
-    v=13+Math.min(15,t*.15);t+=dt;dist+=v*dt;
+    v=13+Math.min(27,t*.27);t+=dt;dist+=v*dt;
     gapLeft-=v*dt;if(gapLeft<=0)spawnRow();
-    objs.forEach(o=>{o.d-=v*dt});
+    for(const o of objs){
+      let sp=v;
+      // fast trains close in on you, but never run through something ahead of them in their lane
+      if(o.u&&!objs.some(p=>p!==o&&p.lane==o.lane&&p.k!='coin'&&p.k!='hole'&&p.k!='gap'&&p.d<o.d&&p.d+p.len>o.d-1.5))sp=v+o.u;
+      o.d-=sp*dt;
+    }
     objs=objs.filter(o=>o.d+o.len>-6);
-    plane+=clamp(lane-plane,-9*dt,9*dt);
+    plane+=clamp(lane-plane,-10*dt,10*dt);
     if(jy>0||vy>0){jy+=vy*dt;vy-=1800*dt;if(jy<=0){jy=0;vy=0;if(pend){sl=.7;pend=false}}}
     if(sl>0)sl-=dt;
     if(inv>0)inv-=dt;
     for(const o of objs){
-      if(o.k=='train'&&!o.horn&&o.d<42){o.horn=1;sfx('train')}
+      if(o.k=='train'&&!o.horn&&o.d/(v+(o.u||0))<(o.u?2.8:2.2)){o.horn=1;sfx('train')}
       if(o.k=='coin'){
         if(Math.abs(plane-o.lane)<.6&&Math.abs(o.d)<1.1){o.gone=1;coins++;total++;sfx('coin');try{localStorage.setItem('lane-coins',total)}catch(e){}
           parts.push({x:X((o.lane-1)*LW,0),y:Y0-40,vx:0,vy:-120,life:.4,col:'#ffd21f'})}
@@ -102,7 +153,8 @@ function lanes(el){
       }
       if(o.hit||inv>0)continue;
       if(Math.abs(plane-o.lane)<.5&&o.d<.8&&o.d+o.len>-.8){
-        if(o.k=='train')hit(o);
+        if(o.k=='train'||o.k=='wall')hit(o);
+        else if((o.k=='hole'||o.k=='gap')&&jy<3&&o.d<.3&&o.d+o.len>-.3)hit(o);
         else if(o.k=='bar'&&jy<32)hit(o);
         else if(o.k=='over'&&!(sl>0&&jy==0))hit(o);
       }
@@ -133,12 +185,17 @@ function lanes(el){
       const b=block(x0,x1,o.d,o.len,0,92,shade(o.col,-.1),shade('#cfd6e4',0),shade('#6c748a',0));
       if(b){
         x.fillStyle='#10131c';x.fillRect(b.l+b.w*.12,b.t+b.h*.12,b.w*.76,b.h*.3);
-        x.fillStyle='#fde68a';x.beginPath();x.arc(b.l+b.w*.2,b.t+b.h*.72,b.w*.07,0,7);x.arc(b.l+b.w*.8,b.t+b.h*.72,b.w*.07,0,7);x.fill();
+        const fast=!!o.u,hl=fast&&Math.floor(time*8)%2==0;
+        x.fillStyle=hl?'#ff4d4d':'#fde68a';x.beginPath();x.arc(b.l+b.w*.2,b.t+b.h*.72,b.w*(fast?.1:.07),0,7);x.arc(b.l+b.w*.8,b.t+b.h*.72,b.w*(fast?.1:.07),0,7);x.fill();
+        if(fast){x.fillStyle='#fff';x.fillRect(b.l,b.t+b.h*.92,b.w,Math.max(2,b.h*.06))}
         x.fillStyle=shade(o.col,-.35);x.fillRect(b.l,b.t+b.h*.52,b.w,b.h*.08);
       }
     }else if(o.k=='bar'){
       const b=block(x0,x1,o.d,o.len,0,28,'#e63027','#ff9a92','#a81d17');
       if(b){x.fillStyle='#fff';for(let i=0;i<6;i+=2)x.fillRect(b.l+b.w*i/6,b.t,b.w/6,b.h)}
+    }else if(o.k=='wall'){
+      const b=block(x0,x1,o.d,o.len,0,84,'#9aa0ad','#d3d7e0','#6b7180');
+      if(b){x.fillStyle='#ffd21f';for(let i=0;i<4;i++){x.beginPath();x.moveTo(b.l+b.w*(i*2)/8,b.t+b.h);x.lineTo(b.l+b.w*(i*2+1)/8,b.t+b.h);x.lineTo(b.l+b.w*(i*2+2)/8,b.t+b.h*.7);x.lineTo(b.l+b.w*(i*2+1)/8,b.t+b.h*.7);x.fill()}}
     }else if(o.k=='over'){
       block(x0,x0+9,o.d,o.len,0,100,'#8d93a3','#c3c8d4','#5d6372');
       block(x1-9,x1,o.d,o.len,0,100,'#8d93a3','#c3c8d4','#5d6372');
@@ -164,6 +221,17 @@ function lanes(el){
       for(let D=-2.4+(2.4-off);D<DMAX+10;D+=2.4){const s=Sc(D),y=gy(D);x.fillRect(X(cx-LW*.4,D),y-3*s,LW*.8*s,Math.max(1,4*s))}
       x.strokeStyle='#aab0bd';x.lineWidth=2.5;
       for(const sd of[-.26,.26]){x.beginPath();x.moveTo(X(cx+sd*LW,DMAX+30),gy(DMAX+30));x.lineTo(X(cx+sd*LW,-3),gy(-3));x.stroke()}
+    }
+    // holes and gaps in the track
+    for(const o of objs){
+      if(o.k!='hole'&&o.k!='gap')continue;
+      const dn=Math.max(o.d,-3),df=Math.min(o.d+o.len,DMAX+30);if(df<=dn)continue;
+      const cx=(o.lane-1)*LW,x0=cx-LW*.46,x1=cx+LW*.46;
+      poly([X(x0,dn),gy(dn),X(x1,dn),gy(dn),X(x1,df),gy(df),X(x0,df),gy(df)],'#050309');
+      // far wall of the pit so it reads as a drop
+      if(df>=o.d+o.len-.01){const sF=Sc(df);poly([X(x0,df),gy(df),X(x1,df),gy(df),X(x1,df),gy(df)+14*sF,X(x0,df),gy(df)+14*sF],'#2a2236')}
+      if(o.d>-3){const sN=Sc(o.d);x.fillStyle='#ffd21f';x.fillRect(X(x0,o.d),gy(o.d)-2*sN,(x1-x0)*sN,Math.max(1.5,3*sN));
+        x.fillStyle='#17171a';for(let i=1;i<8;i+=2)x.fillRect(X(x0,o.d)+(x1-x0)*sN*i/8,gy(o.d)-2*sN,(x1-x0)*sN/8,Math.max(1.5,3*sN))}
     }
     // lamp posts for speed
     for(const side of[-1,1])for(let D=-1+(8-dist%8);D<DMAX;D+=8){
@@ -193,10 +261,13 @@ function lanes(el){
     x.fillStyle='#1e3a8a';x.beginPath();x.arc(cx,hdY-1,9.5,Math.PI,0);x.fill();x.fillRect(cx-9.5,hdY-2,19,5);
   }
   function warns(){
-    for(const o of objs)if(o.k=='train'&&o.d<48&&o.d>5&&Math.floor(time*5)%2==0){
+    for(const o of objs){
+      if(o.k!='train')continue;
+      const ta=o.d/(v+(o.u||0));
+      if(ta>(o.u?3:2.2)||o.d<4||Math.floor(time*(o.u?9:5))%2)continue;
       const px=X((o.lane-1)*LW,12),py=236;
-      poly([px,py-16,px+16,py+12,px-16,py+12],'#e63027');
-      x.fillStyle='#fff';x.font='bold 17px system-ui';x.textAlign='center';x.fillText('!',px,py+10);
+      poly([px,py-16,px+16,py+12,px-16,py+12],o.u?'#e63027':'#f59e0b');
+      x.fillStyle='#fff';x.font='bold 17px system-ui';x.textAlign='center';x.fillText(o.u?'!!':'!',px,py+10);
     }
   }
   function text(s,px,py,size,col,al){
@@ -207,7 +278,7 @@ function lanes(el){
     if(shake>0)x.translate(R(-4,4),R(-4,4));
     x.clearRect(-10,-10,W+20,H+20);
     scene();
-    const list=objs.filter(o=>o.d>-3.5||o.k=='train').sort((a,b)=>b.d-a.d);
+    const list=objs.filter(o=>o.k!='hole'&&o.k!='gap'&&(o.d>-3.5||o.k=='train')).sort((a,b)=>b.d-a.d);
     let drew=false;
     const pl=()=>{drew=true;
       if(inv>0&&Math.floor(time*14)%2==0&&!over)return;
@@ -221,7 +292,7 @@ function lanes(el){
     x.font='26px system-ui';x.textAlign='right';x.fillStyle='#e63027';x.fillText('♥'.repeat(Math.max(0,hearts)),W-12,40);
     x.fillStyle='#ffd21f';x.beginPath();x.arc(W-90,70,8,0,7);x.fill();text(String(coins),W-12,78,24,'#fff','right');
     if(!started){x.fillStyle='#0008';x.fillRect(0,H/2-80,W,150);text('SUBWAY RUSH',W/2,H/2-20,42,'#ffd21f');
-      x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText('Tap or press any key to start',W/2,H/2+14);x.fillText('Swipe or arrows: move, jump, slide',W/2,H/2+38)}
+      x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText('Tap or press any key to start',W/2,H/2+14);x.fillText('Switch lanes around holes and trains',W/2,H/2+38)}
     if(over&&deadT>.5){x.fillStyle='#000b';x.fillRect(0,H/2-90,W,180);text('BUSTED',W/2,H/2-28,50,'#ffd21f');text(score()+' pts',W/2,H/2+16,32,'#fff');
       x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText('Best '+best('lanes',score())+'   Tap or press Enter to retry',W/2,H/2+52)}
   }
