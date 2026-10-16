@@ -2,7 +2,19 @@
 
 A single page of browser games, served by a Cloudflare Worker at https://games.yakton.net.
 
-Games: Heli Royale (battle royale, `public/royal.js`), Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (Subway Rush is in `public/subway.js`), Cube Dash (Geometry Dash style, 3 levels with ship and gravity-flip modes, pads, orbs, saws, coins, practice mode and cube colors, `public/cubedash.js`), Block Drop, Pizza Rush (city delivery with traffic, tips and a Garage, `public/pizzarush.js`), Flappy Pizza, Brick Breaker, Jungle Dash (side-scrolling temple runner with a boulder chasing you, `public/jungle.js`), Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style with a gem Garage for upgrades and cars, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Link Blast (connect-the-dots shooter, `public/linkblast.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
+Games: Heli Royale (battle royale, `public/royal.js`), Chess (vs computer, two players, or online with a room code), Pizza Clicker, Traffic Racer (`public/retouch.js`; Subway Rush is in `public/subway.js`), Cube Dash (Geometry Dash style, 3 levels with ship and gravity-flip modes, pads, orbs, saws, coins, practice mode and cube colors, `public/cubedash.js`), Block Drop, Pizza Rush (city delivery with traffic, tips and a Garage, `public/pizzarush.js`), Flappy Pizza, Brick Breaker, Jungle Dash (side-scrolling temple runner with a boulder chasing you, `public/jungle.js`), Void Run (Run 3 style, `public/voidrun.js`), Drift King (Drift Boss style with a gem Garage for upgrades and cars, `public/drift.js`), Road Hop (Crossy Road style, in `public/roadhop.js`), Link Blast (connect-the-dots shooter, `public/linkblast.js`), Sudoku (three difficulties, notes, hints, `public/puzzles.js`), Connect 4 (computer, two players, or online with a room code, `public/puzzles.js`), Solitaire (Klondike, draw 1 or 3, undo), Lights Out, Slide Puzzle, Slope Run (endless rolling ball, `public/action.js`), Pixel Hopper (6 platformer levels, `public/action.js`), Candy Snip (cut-the-rope physics, 6 levels, `public/action.js`), Snake, Reaction Time, 2048, Memory Match, Minesweeper, Tic-Tac-Toe.
+
+## Admin panel
+
+Open `/admin` (there is an "Admin" button at the bottom of the site and on the downtime screen).
+
+1. Set the password: Cloudflare dashboard > Workers & Pages > yakton-games > Settings > Variables and Secrets > add `ADMIN_PASSWORD` (type Secret). Or run `npx wrangler secret put ADMIN_PASSWORD`. Do not put it in `wrangler.jsonc`.
+2. Deploy. The `STATE` Durable Object and the `v3` migration are created on the next deploy.
+3. Log in. Five wrong tries from one IP locks that IP out for 5 minutes. A login lasts 12 hours.
+
+What it does:
+- **Downtime.** One button puts the whole site (pages, rooms, lobbies) behind a downtime screen, with an optional message. You can still browse the site while logged in. Visitors who already have the site open see a banner.
+- **Coins and unlocks.** Add, set or zero the coins/gems/cash of every game that has them, max the Drift King and Pizza Rush Garages, beat every Cube Dash level (all cube colors), unlock all Pixel Hopper and Candy Snip levels, clear high scores, or reset data. Game saves live in the browser, so these changes apply to the browser you use the panel in.
 
 ## Deploy from GitHub
 

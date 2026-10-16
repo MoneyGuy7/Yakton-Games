@@ -82,3 +82,19 @@ window.SFX=SFX;
   document.addEventListener('click',e=>{if(e.target.closest('.tile,.bar button,#chips button'))SFX.play('click')},true);
   sync();
 })();
+
+// Maintenance notice: if the site is switched to downtime while someone is playing, show a banner instead of cutting them off.
+// An admin who is logged in can still see the site during downtime and gets a small reminder.
+(function downtimeWatch(){
+  let bar=null;
+  const show=(txt,cls)=>{if(!bar){bar=mk('div',{class:'mbanner',role:'status'});document.body.append(bar)}bar.className='mbanner '+cls;bar.textContent=txt};
+  const hide=()=>{if(bar){bar.remove();bar=null}};
+  const check=()=>fetch('/api/status',{cache:'no-store'}).then(r=>r.json()).then(s=>{
+    if(!s.down)hide();
+    else if(s.bypass)show('Downtime is ON. Visitors see the downtime screen. You can see the site because you are logged in as admin.','pv');
+    else show('Yakton Games is going down for maintenance soon. Finish your game, then refresh the page.','');
+  }).catch(()=>{});
+  setInterval(check,60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+  check();
+})();

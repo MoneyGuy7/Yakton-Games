@@ -7,7 +7,7 @@
     "binding": "ASSETS",
     "run_worker_first": true
   },
-  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }, { "name": "ARENAS", "class_name": "Arena" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }, { "tag": "v2", "new_sqlite_classes": ["Arena"] }],
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }, { "name": "ARENAS", "class_name": "Arena" }, { "name": "STATE", "class_name": "SiteState" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }, { "tag": "v2", "new_sqlite_classes": ["Arena"] }, { "tag": "v3", "new_sqlite_classes": ["SiteState"] }],
   "routes": [{ "pattern": "games.yakton.net", "custom_domain": true }]
 }
