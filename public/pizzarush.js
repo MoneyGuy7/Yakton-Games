@@ -24,6 +24,8 @@ function rush(el){
   let bank=0,up={eng:0,tire:0,nit:0,bag:0,bump:0,clock:0};
   try{bank=+localStorage.getItem('rush-bank')||0;const u=JSON.parse(localStorage.getItem('rush-up'));if(u)Object.assign(up,u)}catch(e){}
   const saveG=()=>{try{localStorage.setItem('rush-bank',bank);localStorage.setItem('rush-up',JSON.stringify(up))}catch(e){}};
+  let tut=0,tutA=0,tutSeen=false;try{tutSeen=localStorage.getItem('rush-tut')=='1'}catch(e){}
+  const touchUI=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
   const panel=mk('div',{class:'garage'});el.append(panel);
   function renderGarage(){
     panel.innerHTML='';panel.append(mk('h3',{},'Garage  -  $'+bank));
@@ -121,11 +123,12 @@ function rush(el){
   function reset(){
     TOP=230+up.eng*22;ACC=300+up.eng*30;GRIP=8+up.tire*1.1;TURN=2.5+up.tire*.13;NMAX=100+up.nit*20;NREF=7+up.nit*2.5;CAP=1+up.bag;CRASHQ=14-up.bump*2.8;
     p={x:shop.x,y:shop.y,a:PI/2,vx:0,vy:0};cam={x:clamp(p.x-VW/2,0,WW-VW),y:clamp(p.y-VH/2,0,WH-VH)};
-    time=70+up.clock*6;cash=0;delivered=0;streak=0;bestStreak=0;nit=NMAX;padT=0;oilT=0;over=false;started=false;shake=0;parts=[];traffic=[];bag=[];shopCool=0;shiftT=0;deadT=0;lastTxt='';msgs=[];lastHit=0;
+    tut=0;tutA=0;time=70+up.clock*6;cash=0;delivered=0;streak=0;bestStreak=0;nit=NMAX;padT=0;oilT=0;over=false;started=false;shake=0;parts=[];traffic=[];bag=[];shopCool=0;shiftT=0;deadT=0;lastTxt='';msgs=[];lastHit=0;
     placeHazards();renderGarage();hud();
   }
   function hud(){
     const m=over?`Shift over! Earned $${cash}, ${delivered} delivered, best streak ${bestStreak}. Banked. Best shift $${best('rush',cash)}. Press Enter or click to start another.`
+      :tut?`Tutorial: step ${Math.min(tut,6)} of 6. Press Esc to skip it.`
       :started?`$${cash}   Bag ${bag.length}/${CAP}   Streak x${streak}   ${Math.round(Math.hypot(p.vx,p.vy)*.28)} km/h`
       :`Press any key or tap to start your shift. Bank $${bank}. Spend it in the Garage below.`;
     if(m!==lastTxt){lastTxt=m;st(m)}
@@ -135,7 +138,7 @@ function rush(el){
   /* ---------- orders ---------- */
   function loadBag(){
     let n=0;
-    while(bag.length<CAP){
+    while(bag.length<(tut?1:CAP)){
       let h,tries=0;
       do{h=pick(houses);tries++}while((Math.hypot(h.door.x-shop.x,h.door.y-shop.y)<350||bag.some(o=>o.h==h))&&tries<60);
       const d=Math.hypot(h.door.x-shop.x,h.door.y-shop.y),lv=clamp(shiftT/120,0,1),tm=(8+d/150)*(1-.2*lv);
@@ -216,9 +219,10 @@ function rush(el){
     parts=parts.filter(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=1-1.5*dt;q.vy*=1-1.5*dt;q.life-=dt;return q.life>0});
     msgs=msgs.filter(m=>(m.t-=dt)>0);
     if(shake>0)shake-=dt;if(lastHit>0)lastHit-=dt;
+    if(tut==6){hud();return}
     if(over){deadT+=dt;for(const q of traffic)stepCar(q,dt);hud();return}
     if(!started){for(const q of traffic)stepCar(q,dt);hud();return}
-    shiftT+=dt;time-=dt;
+    if(!tut){shiftT+=dt;time-=dt}
     if(time<=0){time=0;over=true;deadT=0;bank+=cash;saveG();renderGarage();sfx('win');hud();return}
     if(time<10&&Math.floor(time*2)!=Math.floor((time+dt)*2)&&Math.floor(time)!=Math.floor(time+dt))sfx('warn');
     const gas=K.arrowup||K.w||K.gas,brk=K.arrowdown||K.s||K.brake,lt=K.arrowleft||K.a||K.left,rt=K.arrowright||K.d||K.right,hb=K[' ']||K.hb,bst=(K.shift||K.boost)&&nit>0&&(gas||true);
@@ -246,7 +250,7 @@ function rush(el){
     if(p.x<10){p.x=10;if(p.vx<0){imp=Math.max(imp,-p.vx);p.vx*=-.4}}if(p.x>WW-10){p.x=WW-10;if(p.vx>0){imp=Math.max(imp,p.vx);p.vx*=-.4}}
     if(p.y<10){p.y=10;if(p.vy<0){imp=Math.max(imp,-p.vy);p.vy*=-.4}}if(p.y>WH-10){p.y=WH-10;if(p.vy>0){imp=Math.max(imp,p.vy);p.vy*=-.4}}
     // traffic
-    const lv=clamp(shiftT/120,0,1),want=6+Math.floor(lv*9);
+    const lv=clamp(shiftT/120,0,1),want=tut?0:6+Math.floor(lv*9);
     if(traffic.length<want&&Math.random()<dt*2)newCar();
     for(const q of traffic){
       stepCar(q,dt);
@@ -267,8 +271,8 @@ function rush(el){
     for(const q of pads)if(Math.abs(p.x-q.x)<(q.horiz?26:17)&&Math.abs(p.y-q.y)<(q.horiz?17:26)){if(padT<.5){sfx('swipe');nit=Math.min(NMAX,nit+25)}padT=1.2}
     // shop and deliveries
     if(shopCool>0)shopCool-=dt;
-    if(shopCool<=0&&bag.length<CAP&&Math.hypot(p.x-shop.x,p.y-shop.y)<36)loadBag();
-    for(const o of bag){o.t-=dt}
+    if(shopCool<=0&&bag.length<CAP&&!(tut&&tut<4)&&Math.hypot(p.x-shop.x,p.y-shop.y)<36)loadBag();
+    if(!tut)for(const o of bag){o.t-=dt}
     for(let i=bag.length-1;i>=0;i--){
       const o=bag[i];
       if(Math.hypot(p.x-o.h.door.x,p.y-o.h.door.y)<34){
@@ -285,12 +289,65 @@ function rush(el){
         for(let k=0;k<14;k++)parts.push({x:o.h.door.x,y:o.h.door.y,vx:R(-150,150),vy:R(-180,40),life:R(.5,1),col:pick(['#ffd21f','#fff','#34d399']),r:R(2,4)});
       }
     }
+    // tutorial progress
+    if(tut){
+      const sp=Math.hypot(p.vx,p.vy);
+      if(tut==1){tutA+=sp*dt;if(tutA>900)tutNext()}
+      else if(tut==2){if(bst)tutA+=dt;if(tutA>1.2)tutNext()}
+      else if(tut==3){if(hb&&sp>70)tutA+=dt;if(tutA>.8)tutNext()}
+      else if(tut==4){if(bag.length)tutNext()}
+      else if(tut==5){if(delivered>0)tutNext()}
+    }
     // camera
     const tx=clamp(p.x+p.vx*.35-VW/2,0,WW-VW),ty=clamp(p.y+p.vy*.35-VH/2,0,WH-VH);
     cam.x+=(tx-cam.x)*Math.min(1,5*dt);cam.y+=(ty-cam.y)*Math.min(1,5*dt);
     hud();
   }
   let time0=0;
+  /* ---------- tutorial ---------- */
+  const TUT=[
+    {t:'Drive around',k:'Hold W or Up to drive. Steer with A / D or Left / Right.',m:'Hold Gas to drive. Steer with the left and right buttons.'},
+    {t:'Use nitro',k:'Hold Shift for a speed boost. The blue bar at the bottom left is your nitro tank.',m:'Hold the Nitro button for a speed boost. The blue bar is your tank.'},
+    {t:'Drift',k:'Hold Space while you turn to slide round corners.',m:'Hold the Drift button while you turn to slide round corners.'},
+    {t:'Pick up a pizza',k:'Drive back to the red P. The little arrow next to your car points the way.',m:'Drive back to the red P. The little arrow next to your car points the way.'},
+    {t:'Deliver it',k:'Follow the yellow arrow to the glowing $ house. In a real shift the ring around it is a countdown.',m:'Follow the yellow arrow to the glowing $ house. In a real shift the ring around it is a countdown.'}
+  ];
+  function startTut(){reset();tut=1;tutA=0;started=true;traffic=[];bag=[];time=60;hud()}
+  function finishTut(){try{localStorage.setItem('rush-tut','1')}catch(e){}tutSeen=true;reset()}
+  function begin(){if(!tutSeen)startTut();else{started=true;hud()}}
+  function tutNext(){tut++;tutA=0;sfx('coin');if(tut>=2&&tut<=4)say(['Nice driving!','Boosted!','Slick drift!'][tut-2]);if(tut==4)shopCool=0}
+  const tutBtn={x:VW/2-80,y:VH/2+98,w:160,h:30};
+  function wrapT(s,mw){const w=s.split(' '),out=[];let cur='';for(const q of w){const t=cur?cur+' '+q:q;if(x.measureText(t).width>mw&&cur){out.push(cur);cur=q}else cur=t}out.push(cur);return out}
+  function drawTut(){
+    if(!tut)return;
+    if(tut==6){
+      x.fillStyle='#000d';x.fillRect(100,56,520,330);x.strokeStyle='#ffd21f';x.lineWidth=2;x.strokeRect(101,56,518,328);
+      text('YOU ARE READY!',VW/2,102,34,'#ffd21f');
+      x.textAlign='left';x.font='15px system-ui';x.fillStyle='#fff';
+      // cone
+      x.fillStyle='#f97316';x.beginPath();x.arc(150,142,10,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(150,142,5.5,0,7);x.fill();x.fillStyle='#f97316';x.beginPath();x.arc(150,142,2.5,0,7);x.fill();
+      // oil
+      x.fillStyle='rgba(60,30,120,.95)';x.beginPath();x.ellipse(150,182,15,10,.3,0,7);x.fill();x.fillStyle='rgba(150,110,255,.5)';x.beginPath();x.ellipse(146,179,7,4,.3,0,7);x.fill();
+      // pad
+      x.fillStyle='#111';x.fillRect(134,210,32,26);x.fillStyle='#22d3ee';x.beginPath();x.moveTo(142,215);x.lineTo(158,223);x.lineTo(142,231);x.lineTo(146,223);x.fill();
+      x.fillStyle='#fff';x.font='15px system-ui';x.textAlign='left';
+      x.fillText('Cones: knock them over and they slow you down.',186,148);
+      x.fillText('Oil: your tires slip, so steer gently.',186,188);
+      x.fillText('Cyan pads: a free boost and a nitro top-up.',186,228);
+      x.fillStyle='#b9f6ca';x.font='14px system-ui';
+      let yy=268;for(const t of ['Crashes spoil the pizza and shrink your tip. Fast deliveries in a row build a streak bonus.','Cash you earn is banked. Spend it in the Garage under the game.'])for(const ln of wrapT(t,470)){x.fillText(ln,130,yy);yy+=20}
+      x.textAlign='center';x.fillStyle='#22d3ee';x.font='bold 16px system-ui';x.fillText(touchUI?'Tap to finish':'Press Enter or Space to finish',VW/2,364);
+      return;
+    }
+    const T=TUT[tut-1],bx=160,by=VH-98,bw=416,bh=86;
+    x.fillStyle='#000d';x.fillRect(bx,by,bw,bh);x.strokeStyle='#ffd21f';x.lineWidth=2;x.strokeRect(bx+1,by+1,bw-2,bh-2);
+    x.textAlign='left';x.font='bold 13px system-ui';x.fillStyle='#ffd21f';x.fillText(`TUTORIAL ${tut}/6   ${T.t.toUpperCase()}`,bx+12,by+22);
+    x.textAlign='right';x.fillStyle='#fffa';x.font='12px system-ui';x.fillText(touchUI?'Tap here to skip':'Esc to skip',bx+bw-12,by+22);
+    x.textAlign='left';x.fillStyle='#fff';x.font='14px system-ui';
+    wrapT(touchUI?T.m:T.k,bw-24).slice(0,2).forEach((ln,i)=>x.fillText(ln,bx+12,by+46+i*18));
+    const fr=tut==1?tutA/900:tut==2?tutA/1.2:tut==3?tutA/.8:0;
+    if(tut<=3){x.fillStyle='#fff3';x.fillRect(bx+12,by+bh-12,bw-24,5);x.fillStyle='#22c55e';x.fillRect(bx+12,by+bh-12,(bw-24)*clamp(fr,0,1),5)}
+  }
 
   /* ---------- drawing ---------- */
   function text(s,px,py,size,col,al){x.font=`${size}px Impact,"Arial Black",sans-serif`;x.textAlign=al||'center';x.lineWidth=Math.max(3,size/7);x.strokeStyle='#000b';x.strokeText(s,px,py);x.fillStyle=col;x.fillText(s,px,py)}
@@ -333,19 +390,20 @@ function rush(el){
     sprite(p.x,p.y,p.a,lastHit>0&&Math.floor(time0*20)%2?'#fff':'#e63027',true);
     // arrow to target
     let tg=shop;if(bag.length){let bd=1e9;for(const o of bag){const d=Math.hypot(o.h.door.x-p.x,o.h.door.y-p.y);if(d<bd){bd=d;tg=o.h.door}}}
-    if(started&&!over){const g=Math.atan2(tg.x-p.x,-(tg.y-p.y));x.save();x.translate(p.x+Math.sin(g)*38,p.y-Math.cos(g)*38);x.rotate(g);x.fillStyle=bag.length?'#ffd21f':'#ff6b5e';x.strokeStyle='#000a';x.lineWidth=2;x.beginPath();x.moveTo(0,-9);x.lineTo(7,7);x.lineTo(0,3);x.lineTo(-7,7);x.closePath();x.fill();x.stroke();x.restore()}
+    if(started&&!over&&!(tut&&tut<4)&&tut!=6){const g=Math.atan2(tg.x-p.x,-(tg.y-p.y));x.save();x.translate(p.x+Math.sin(g)*38,p.y-Math.cos(g)*38);x.rotate(g);x.fillStyle=bag.length?'#ffd21f':'#ff6b5e';x.strokeStyle='#000a';x.lineWidth=2;x.beginPath();x.moveTo(0,-9);x.lineTo(7,7);x.lineTo(0,3);x.lineTo(-7,7);x.closePath();x.fill();x.stroke();x.restore()}
     x.restore();
     // tint toward evening as the shift gets long
     const dusk=clamp(shiftT/150,0,1)*.28;if(dusk>0){x.fillStyle=`rgba(40,20,90,${dusk})`;x.fillRect(0,0,VW,VH)}
-    hudDraw();
+    hudDraw();drawTut();
     if(!started){x.fillStyle='#000a';x.fillRect(0,VH/2-84,VW,170);text('PIZZA RUSH',VW/2,VH/2-26,54,'#ffd21f');x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';
-      x.fillText('Tap or press any key to start your shift',VW/2,VH/2+8);x.fillText('Arrows or WASD drive   Shift: nitro   Space: handbrake drift',VW/2,VH/2+32);x.fillStyle='#b9f6ca';x.fillText('Grab pizzas at the red P, deliver them fast, dodge traffic',VW/2,VH/2+58)}
+      x.fillText(tutSeen?'Tap or press any key to start your shift':'Tap or press any key to start. Your first shift begins with a quick tutorial',VW/2,VH/2+8);x.fillText('Arrows or WASD drive   Shift: nitro   Space: handbrake drift',VW/2,VH/2+32);x.fillStyle='#b9f6ca';x.fillText('Grab pizzas at the red P, deliver them fast, dodge traffic',VW/2,VH/2+58)}
+    if(!started){x.fillStyle='#000c';x.fillRect(tutBtn.x,tutBtn.y,tutBtn.w,tutBtn.h);x.strokeStyle='#22d3ee';x.lineWidth=2;x.strokeRect(tutBtn.x+1,tutBtn.y+1,tutBtn.w-2,tutBtn.h-2);x.fillStyle='#22d3ee';x.font='bold 14px system-ui';x.textAlign='center';x.fillText(touchUI?'How to play':'How to play (T)',VW/2,tutBtn.y+20)}
     if(over&&deadT>.4){x.fillStyle='#000c';x.fillRect(0,VH/2-96,VW,192);text('SHIFT OVER',VW/2,VH/2-36,52,'#ffd21f');text('$'+cash+'  earned',VW/2,VH/2+8,32,'#fff');
       x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText(delivered+' delivered   best streak '+bestStreak+'   bank $'+bank,VW/2,VH/2+40);x.fillText('Spend your cash in the Garage, then press Enter or tap',VW/2,VH/2+66)}
   }
   function hudDraw(){
     text('$'+cash,14,38,34,'#fff','left');
-    const low=time<10;text(Math.ceil(time)+'s',VW/2,38,34,low&&Math.floor(time0*4)%2?'#ef4444':'#fff');
+    if(!tut){const low=time<10;text(Math.ceil(time)+'s',VW/2,38,34,low&&Math.floor(time0*4)%2?'#ef4444':'#fff')}
     if(streak>1)text('x'+streak+' streak',14,64,18,'#ffd21f','left');
     // nitro bar
     x.fillStyle='#0008';x.fillRect(14,VH-26,130,12);x.fillStyle='#22d3ee';x.fillRect(15,VH-25,128*(nit/NMAX),10);x.font='11px system-ui';x.textAlign='left';x.fillStyle='#fff';x.fillText('NITRO (Shift)',16,VH-30);
@@ -371,17 +429,24 @@ function rush(el){
     const n=e.key.toLowerCase();
     if(used.has(n))e.preventDefault();
     if(over){if((n=='enter'||n==' ')&&deadT>.4)reset();return}
+    if(tut){if(n=='escape'){finishTut();return}if(tut==6&&(n=='enter'||n==' ')){finishTut();return}}
+    if(!started&&n=='t'){startTut();return}
     K[n]=1;
-    if(!started&&(used.has(n)||'wasd'.includes(n)&&n.length==1||n=='enter'||n=='shift')){started=true;hud()}
+    if(!started&&(used.has(n)||'wasd'.includes(n)&&n.length==1||n=='enter'||n=='shift'))begin();
   });
   on(document,'keyup',e=>{K[e.key.toLowerCase()]=0});
-  on(c,'pointerdown',()=>{if(over){if(deadT>.4)reset()}else if(!started){started=true;hud()}});
+  on(c,'pointerdown',e=>{
+    const r=c.getBoundingClientRect(),mx=(e.clientX-r.left)/r.width*VW,my=(e.clientY-r.top)/r.height*VH;
+    if(over){if(deadT>.4)reset();return}
+    if(tut){if(tut==6)finishTut();else if(mx>400&&mx<580&&my>VH-98&&my<VH-60)finishTut();return}
+    if(!started){if(mx>=tutBtn.x&&mx<=tutBtn.x+tutBtn.w&&my>=tutBtn.y&&my<=tutBtn.y+tutBtn.h)startTut();else begin()}
+  });
   // touch buttons (shown on touch screens)
   if(window.matchMedia&&matchMedia('(pointer:coarse)').matches){
     const bar=mk('div',{style:'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;touch-action:none;user-select:none'});
     [['◀','left'],['▶','right'],['Gas','gas'],['Brake','brake'],['Nitro','boost'],['Drift','hb']].forEach(([lab,key])=>{
       const b=mk('button',{type:'button',class:'ghost'},lab);b.style.cssText='min-width:64px;padding:12px 10px;touch-action:none';
-      const down=e=>{e.preventDefault();K[key]=1;if(!started&&!over){started=true;hud()}},upf=()=>{K[key]=0};
+      const down=e=>{e.preventDefault();K[key]=1;if(!started&&!over)begin()},upf=()=>{K[key]=0};
       b.addEventListener('pointerdown',down);['pointerup','pointercancel','pointerleave'].forEach(t=>b.addEventListener(t,upf));bar.append(b)});
     el.insertBefore(bar,panel);
   }

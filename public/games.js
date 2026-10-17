@@ -13,17 +13,32 @@ function dirs(el,cb){
 }
 
 function g2048(el){
-  const gr=mk('div',{class:'g4'});let b=Array(16).fill(0),sc=0;el.append(gr);
-  const add=()=>{const e=[];b.forEach((v,i)=>v||e.push(i));b[e[rnd(e.length)]]=Math.random()<.9?2:4};
-  const slide=r=>{r=r.filter(Boolean);const o=[];for(let i=0;i<r.length;i++){if(r[i]==r[i+1]){o.push(r[i]*2);sc+=r[i]*2;i++}else o.push(r[i])}while(o.length<4)o.push(0);return o};
-  const stuck=()=>{if(b.includes(0))return 0;for(let i=0;i<16;i++)if((i%4<3&&b[i]==b[i+1])||(i<12&&b[i]==b[i+4]))return 0;return 1};
-  function move(d){const hz='lr'.includes(d),rv='rd'.includes(d),nb=b.slice();let ch=0;
+  const wrap=mk('div',{class:'g48'}),bg=mk('div',{class:'g48bg'}),lay=mk('div',{class:'g48tiles'});
+  for(let i=0;i<16;i++)bg.append(mk('i',{class:'t'}));
+  wrap.append(bg,lay);el.append(wrap);
+  let tiles=[],sc=0,uid=0,junk=[],tmo=[];
+  const occ=()=>{const g=Array(16).fill(null);tiles.forEach(t=>g[t.r*4+t.c]=t);return g};
+  function place(t){t.el.style.setProperty('--r',t.r);t.el.style.setProperty('--c',t.c)}
+  function mkTile(v,r,c,cls){const t={id:uid++,v,r,c,el:mk('i',{class:'tl '+(cls||'')},String(v))};t.el.style.setProperty('--v',Math.log2(v));place(t);lay.append(t.el);return t}
+  function spawn(){const g=occ(),e=[];g.forEach((t,i)=>t||e.push(i));if(!e.length)return;const i=e[rnd(e.length)];tiles.push(mkTile(Math.random()<.9?2:4,i>>2,i&3,'new'))}
+  const stuck=()=>{const g=occ();if(g.includes(null))return 0;for(let i=0;i<16;i++){if((i%4<3&&g[i].v==g[i+1].v)||(i<12&&g[i].v==g[i+4].v))return 0}return 1};
+  const flush=()=>{tmo.forEach(clearTimeout);tmo=[];junk.forEach(t=>t.el.remove());junk=[]};
+  function move(d){flush();const hz='lr'.includes(d),rv='rd'.includes(d),g=occ();let ch=0;const made=[];
     for(let i=0;i<4;i++){const ix=[0,1,2,3].map(j=>hz?i*4+j:j*4+i);if(rv)ix.reverse();
-      const o=slide(ix.map(k=>b[k]));ix.forEach((k,j)=>{if(nb[k]!=o[j])ch=1;nb[k]=o[j]})}
-    if(ch){b=nb;add();draw()}}
-  function draw(){gr.innerHTML=b.map(v=>`<i class="t"${v?` style="--v:${Math.log2(v)}"`:''}>${v||''}</i>`).join('');
-    st(stuck()?`No moves left. Score ${sc}. Best ${best('2048',sc)}.`:'Score '+sc)}
-  add();add();draw();dirs(gr,move);
+      const line=ix.map(k=>g[k]).filter(Boolean);let pos=0;
+      for(let k=0;k<line.length;k++){const t=line[k],n=line[k+1],tgt=ix[pos];
+        const nr=tgt>>2,nc=tgt&3;
+        if(n&&n.v==t.v){if(t.r!=nr||t.c!=nc||n.r!=nr||n.c!=nc)ch=1;ch=1;
+          t.r=n.r=nr;t.c=n.c=nc;place(t);place(n);junk.push(t,n);sc+=t.v*2;made.push([t.v*2,nr,nc]);k++;pos++}
+        else{if(t.r!=nr||t.c!=nc)ch=1;t.r=nr;t.c=nc;place(t);pos++}}}
+    if(!ch)return;fx('slide');
+    tiles=tiles.filter(t=>!junk.includes(t));
+    made.forEach(m=>tiles.push(mkTile(m[0],m[1],m[2],'pop hid')));
+    tmo.push(setTimeout(()=>{junk.forEach(t=>t.el.remove());junk=[];lay.querySelectorAll('.hid').forEach(e=>e.classList.remove('hid'));spawn();
+      st(stuck()?`No moves left. Score ${sc}. Best ${best('2048',sc)}.`:'Score '+sc)},120));
+    st('Score '+sc)}
+  spawn();spawn();st('Score 0');dirs(wrap,move);
+  return()=>flush();
 }
 
 function react(el){

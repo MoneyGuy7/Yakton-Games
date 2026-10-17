@@ -1,6 +1,7 @@
 // Subway Rush: a three lane runner in real perspective.
 // Obstacles: low barriers (jump), overhead signs (slide), concrete walls, parked trains, fast moving trains,
 // holes in the track (switch lane) and short gaps (jump). Speed keeps ramping up the longer you run.
+// Ramps lead up onto the roof of a parked train: ride it, grab the coins up there, and drop off the back.
 // Every row is built around a safe lane so there is always a way through, and you have two hearts.
 function lanes(el){
   const W=360,H=560,LW=96,F=16,HY=170,Y0=480,DMAX=100,DPR=Math.min(2,window.devicePixelRatio||1);
@@ -13,13 +14,13 @@ function lanes(el){
   function shade(h,a){const n=parseInt(h.slice(1),16),f=v=>Math.max(0,Math.min(255,Math.round(v+a*(a<0?v:255-v))));return`rgb(${f(n>>16)},${f(n>>8&255)},${f(n&255)})`}
   const TRAIN=['#3b82f6','#f97316','#16a34a','#a855f7'];
 
-  let objs,gapLeft,rowN,lastPat,t,time=0,dist,v,plane,lane,jy,vy,sl,pend,hearts,inv,over,started,coins,total=0,shake,parts,deadT,lastTxt;
+  let base=0,objs,gapLeft,rowN,lastPat,t,time=0,dist,v,plane,lane,jy,vy,sl,pend,hearts,inv,over,started,coins,total=0,shake,parts,deadT,lastTxt;
   try{total=+localStorage.getItem('lane-coins')||0}catch(e){}
   // scenery made once
   const city=[];for(let i=0;i<16;i++){const w=22+rnd(26),h=30+rnd(95),wins=[];for(let k=0;k<w*h/90;k++)wins.push([3+rnd(w-8),4+rnd(Math.max(1,h-10)),Math.random()<.55]);city.push({x:i*24-10,w,h,wins})}
 
   function reset(){
-    objs=[];gapLeft=0;rowN=0;lastPat='';t=0;dist=0;v=13;plane=lane=1;jy=vy=sl=0;pend=false;hearts=2;inv=0;over=false;started=false;coins=0;shake=0;parts=[];deadT=0;lastTxt='';
+    objs=[];base=0;gapLeft=0;rowN=0;lastPat='';t=0;dist=0;v=13;plane=lane=1;jy=vy=sl=0;pend=false;hearts=2;inv=0;over=false;started=false;coins=0;shake=0;parts=[];deadT=0;lastTxt='';
     hud();
   }
   const score=()=>Math.floor(dist/2)+coins*5;
@@ -32,7 +33,7 @@ function lanes(el){
 
   /* ---------- level generation ---------- */
   const ob=(k,l,d,len,ex)=>objs.push(Object.assign({k,lane:l,d,len,horn:0},ex||{}));
-  function coinLine(l,n,d0,air){for(let i=0;i<n;i++)objs.push({k:'coin',lane:l,d:d0+i*2.2,len:0,air:air?1:0})}
+  function coinLine(l,n,d0,air){for(let i=0;i<n;i++)objs.push({k:'coin',lane:l,d:d0+i*2.2,len:0,air:air?(air===2?2:1):0})}
   function coinArc(l,d){for(let i=-1;i<=1;i++)objs.push({k:'coin',lane:l,d:d+i*1.6,len:0,air:1})}
   const others=s=>[0,1,2].filter(l=>l!=s);
   const pick=a=>a[rnd(a.length)];
@@ -41,7 +42,7 @@ function lanes(el){
     const lv=clamp(t/90,0,1),d=DMAX;let len=2,gapMin=0;
     const pool=rowN<3?[['coins',3],['jump',3],['slide',2]]
       :[['coins',lv<.5?2:1],['jump',3],['slide',3],['course',2+4*lv],['blocks',3],['train',3],
-        ['mtrain',lv<.12?0:3.5],['holes',lv<.1?0:3],['gaps',lv<.05?0:2],['stairs',lv<.3?0:3]];
+        ['mtrain',lv<.12?0:3.5],['holes',lv<.1?0:3],['gaps',lv<.05?0:2],['stairs',lv<.3?0:3],['ramp',lv<.05?0:4]];
     let tot=pool.reduce((a,b)=>a+b[1],0),r=Math.random()*tot,pat=pool[0][0];
     for(const[k,w]of pool){if(r<w){pat=k;break}r-=w}
     if(pat==lastPat&&pat!='coins')pat='coins';
@@ -99,6 +100,13 @@ function lanes(el){
       if(lv>.5&&Math.random()<.5){ob('gap',safe,d+hl*.4,3);coinArc(safe,d+hl*.4+1.5)}else coinLine(safe,Math.floor(hl/2.2),d+1);
     }else if(pat=='gaps'){
       len=3;[0,1,2].forEach(l=>ob('gap',l,d,3));coinArc(1,d+1.5);
+    }else if(pat=='ramp'){
+      // ramp up onto a parked train roof with coins on top; another lane has a hazard, the safe lane stays clear
+      const rl=pick(oth),ol=oth.find(l=>l!=rl),RL=8,TL=R(15,22);
+      ob('ramp',rl,d,RL);ob('train',rl,d+RL,TL,{col:pick(TRAIN),ride:1,horn:1});
+      coinLine(rl,Math.floor(TL/2.2),d+RL+1,2);
+      if(Math.random()<.5)ob('wall',ol,d+RL,2.5);else ob(pick(['bar','over']),ol,d+RL,1.2);
+      coinLine(safe,5,d+2);len=RL+TL;
     }else if(pat=='stairs'){
       // three trains one after another in different lanes. Wait in the last lane, then cross over
       // through the gap in the middle lane (g) once the first two have gone by.
@@ -106,7 +114,7 @@ function lanes(el){
       order.forEach((l,i)=>ob('train',l,d+i*S,L,{col:pick(TRAIN)}));
       len=2*S+L;coinLine(order[2],5,d+S*.5);
     }
-    gapLeft=Math.max(len+v*(1.15-.55*lv)+4,gapMin);
+    gapLeft=Math.max(len+v*(.62-.3*lv)+2,gapMin);
   }
 
   /* ---------- gameplay ---------- */
@@ -144,19 +152,24 @@ function lanes(el){
     if(jy>0||vy>0){jy+=vy*dt;vy-=1800*dt;if(jy<=0){jy=0;vy=0;if(pend){sl=.7;pend=false}}}
     if(sl>0)sl-=dt;
     if(inv>0)inv-=dt;
+    {let tg=0;const rl=Math.round(plane);
+      for(const o of objs){if(o.lane!=rl||!(o.d<=0&&o.d+o.len>0))continue;
+        if(o.k=='ramp')tg=Math.max(tg,-o.d/o.len*92);else if(o.ride)tg=Math.max(tg,92)}
+      if(tg>=base)base=tg;else base=Math.max(tg,base-900*dt)}
+    const HT=base+jy;
     for(const o of objs){
       if(o.k=='train'&&!o.horn&&o.d/(v+(o.u||0))<(o.u?2.8:2.2)){o.horn=1;sfx('train')}
       if(o.k=='coin'){
-        if(Math.abs(plane-o.lane)<.6&&Math.abs(o.d)<1.1){o.gone=1;coins++;total++;sfx('coin');try{localStorage.setItem('lane-coins',total)}catch(e){}
+        if(Math.abs(plane-o.lane)<.6&&Math.abs(o.d)<1.1&&(o.air!=2||HT>60)){o.gone=1;coins++;total++;sfx('coin');try{localStorage.setItem('lane-coins',total)}catch(e){}
           parts.push({x:X((o.lane-1)*LW,0),y:Y0-40,vx:0,vy:-120,life:.4,col:'#ffd21f'})}
         continue;
       }
       if(o.hit||inv>0)continue;
       if(Math.abs(plane-o.lane)<.5&&o.d<.8&&o.d+o.len>-.8){
-        if(o.k=='train'||o.k=='wall')hit(o);
-        else if((o.k=='hole'||o.k=='gap')&&jy<3&&o.d<.3&&o.d+o.len>-.3)hit(o);
-        else if(o.k=='bar'&&jy<32)hit(o);
-        else if(o.k=='over'&&!(sl>0&&jy==0))hit(o);
+        if(o.k=='train'||o.k=='wall'){if(HT<(o.k=='wall'?76:84))hit(o)}
+        else if((o.k=='hole'||o.k=='gap')&&HT<3&&o.d<.3&&o.d+o.len>-.3)hit(o);
+        else if(o.k=='bar'&&HT<32)hit(o);
+        else if(o.k=='over'&&!(sl>0&&jy==0)&&!(base>20))hit(o);
       }
     }
     objs=objs.filter(o=>!o.gone);
@@ -174,7 +187,7 @@ function lanes(el){
       if(x1<=0)poly([X(x1,dn),gN-z0*sN,X(x1,dn),gN-z1*sN,X(x1,df),gF-z1*sF,X(x1,df),gF-z0*sF],side);
       if(x0>=0)poly([X(x0,dn),gN-z0*sN,X(x0,dn),gN-z1*sN,X(x0,df),gF-z1*sF,X(x0,df),gF-z0*sF],side);
     }
-    x.fillStyle=front;x.fillRect(X(x0,dn),gN-z1*sN,(x1-x0)*sN,(z1-z0)*sN);
+    if(d>=-3)x.fillStyle=front,x.fillRect(X(x0,dn),gN-z1*sN,(x1-x0)*sN,(z1-z0)*sN);
     return{l:X(x0,dn),t:gN-z1*sN,w:(x1-x0)*sN,h:(z1-z0)*sN,s:sN,g:gN};
   }
   function fade(d){return d>DMAX-10?clamp((DMAX-d)/10,0,1):1}
@@ -183,12 +196,23 @@ function lanes(el){
     const cx=(o.lane-1)*LW,x0=cx-LW*.42,x1=cx+LW*.42;
     if(o.k=='train'){
       const b=block(x0,x1,o.d,o.len,0,92,shade(o.col,-.1),shade('#cfd6e4',0),shade('#6c748a',0));
-      if(b){
+      if(b&&o.d>=-3){
         x.fillStyle='#10131c';x.fillRect(b.l+b.w*.12,b.t+b.h*.12,b.w*.76,b.h*.3);
         const fast=!!o.u,hl=fast&&Math.floor(time*8)%2==0;
         x.fillStyle=hl?'#ff4d4d':'#fde68a';x.beginPath();x.arc(b.l+b.w*.2,b.t+b.h*.72,b.w*(fast?.1:.07),0,7);x.arc(b.l+b.w*.8,b.t+b.h*.72,b.w*(fast?.1:.07),0,7);x.fill();
         if(fast){x.fillStyle='#fff';x.fillRect(b.l,b.t+b.h*.92,b.w,Math.max(2,b.h*.06))}
         x.fillStyle=shade(o.col,-.35);x.fillRect(b.l,b.t+b.h*.52,b.w,b.h*.08);
+      }
+    }else if(o.k=='ramp'){
+      const dn=Math.max(o.d,-3),df=o.d+o.len;
+      if(df>-3){
+        const H=92,tn=(dn-o.d)/o.len,hN=H*tn,sN=Sc(dn),sF=Sc(df),gN=gy(dn),gF=gy(df);
+        if(x1<=0)poly([X(x1,dn),gN-hN*sN,X(x1,dn),gN,X(x1,df),gF,X(x1,df),gF-H*sF],'#a8620b');
+        if(x0>=0)poly([X(x0,dn),gN-hN*sN,X(x0,dn),gN,X(x0,df),gF,X(x0,df),gF-H*sF],'#a8620b');
+        poly([X(x0,dn),gN-hN*sN,X(x1,dn),gN-hN*sN,X(x1,df),gF-H*sF,X(x0,df),gF-H*sF],'#f5a524');
+        x.strokeStyle='#17171a';x.lineWidth=Math.max(1,3*sN);
+        for(let i=1;i<6;i++){const tt=i/6;if(tt<tn)continue;const dd=o.d+o.len*tt,ss=Sc(dd),yy=gy(dd)-H*tt*ss;x.beginPath();x.moveTo(X(x0,dd),yy);x.lineTo(X(x1,dd),yy);x.stroke()}
+        x.fillStyle='#ffe08a';x.fillRect(X(x0,dn),gN-hN*sN-2,(x1-x0)*sN,2)
       }
     }else if(o.k=='bar'){
       const b=block(x0,x1,o.d,o.len,0,28,'#e63027','#ff9a92','#a81d17');
@@ -202,7 +226,7 @@ function lanes(el){
       const b=block(x0,x1,o.d,o.len,48,74,'#ffd21f','#fff3a0','#b8960f');
       if(b){x.fillStyle='#17171a';for(let i=0;i<8;i+=2)x.fillRect(b.l+b.w*i/8,b.t,b.w/8,b.h)}
     }else{
-      const s=Sc(o.d),cxp=X(cx,o.d),cy=gy(o.d)-(o.air?62:24)*s,w=Math.abs(Math.cos(time*5+o.d))*9*s+2*s;
+      const s=Sc(o.d),cxp=X(cx,o.d),cy=gy(o.d)-(o.air==2?122:o.air?62:24)*s,w=Math.abs(Math.cos(time*5+o.d))*9*s+2*s;
       x.fillStyle='#ffd21f';x.strokeStyle='#b45309';x.lineWidth=Math.max(1,2*s);x.beginPath();x.ellipse(cxp,cy,w,9*s,0,0,7);x.fill();x.stroke();
     }
     x.globalAlpha=1;
@@ -262,7 +286,7 @@ function lanes(el){
   }
   function warns(){
     for(const o of objs){
-      if(o.k!='train')continue;
+      if(o.k!='train'||o.ride)continue;
       const ta=o.d/(v+(o.u||0));
       if(ta>(o.u?3:2.2)||o.d<4||Math.floor(time*(o.u?9:5))%2)continue;
       const px=X((o.lane-1)*LW,12),py=236;
@@ -278,12 +302,12 @@ function lanes(el){
     if(shake>0)x.translate(R(-4,4),R(-4,4));
     x.clearRect(-10,-10,W+20,H+20);
     scene();
-    const list=objs.filter(o=>o.k!='hole'&&o.k!='gap'&&(o.d>-3.5||o.k=='train')).sort((a,b)=>b.d-a.d);
+    const list=objs.filter(o=>o.k!='hole'&&o.k!='gap'&&(o.d>-3.5||o.k=='train'||o.k=='ramp')).sort((a,b)=>b.d-a.d);
     let drew=false;
     const pl=()=>{drew=true;
       if(inv>0&&Math.floor(time*14)%2==0&&!over)return;
-      runner(X((plane-1)*LW,0),Y0,jy,sl>0&&jy==0,time*(started&&!over?13:4),jy>0)};
-    for(const o of list){if(!drew&&o.d<0)pl();drawObj(o)}
+      runner(X((plane-1)*LW,0),Y0,jy+base,sl>0&&jy==0,time*(started&&!over?13:4),jy>0)};
+    for(const o of list){if(!drew&&o.d<0&&!(o.k=='ramp'||o.ride))pl();drawObj(o)}
     if(!drew)pl();
     warns();
     parts.forEach(q=>{x.globalAlpha=clamp(q.life*2,0,1);x.fillStyle=q.col;x.fillRect(q.x-2,q.y-2,4,4)});x.globalAlpha=1;

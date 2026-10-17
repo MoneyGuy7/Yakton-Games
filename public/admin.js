@@ -168,4 +168,10 @@
     catch (e) { app.innerHTML = ''; app.append(el('p', { class: 'err' }, 'Could not reach the server.')) }
   }
   init();
+  // Coming back to this page with the back button must not show an empty screen.
+  addEventListener('pageshow', e => {
+    let nav = ''; try { nav = performance.getEntriesByType('navigation')[0].type } catch (x) { }
+    if (e.persisted || nav === 'back_forward') location.reload();
+    else setTimeout(() => { if (!app.children.length) init() }, 300)
+  });
 })();

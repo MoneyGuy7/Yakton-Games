@@ -33,6 +33,7 @@ function royale(el){
   /* ---------- state ---------- */
   let phase='menu',online=0,ws,myId='me',isHost=1,room='',peers={},dead=0,T=0,grace=0,lvl=1,raf;
   let E=[],byId={},me,bul=[],par=[],feed=[],crates=[],lakes=[],towns=[],trees=[],roads=[],z,spec=null;
+  let hm=0,km=0,kt='',flash=0,dn=[],hd=[],rg=[];
   let cam={x:0,y:0},shake=0,banner=null,over=null,endd=null,ovT=0,lastShr=0,lastSt='',rocketReq=0;
   const keys={},ms={x:VW/2,y:VH/2,at:-1e9,down:0},tp={on:0,id:null,x:0,y:0},tu={seen:0};
   const send=o=>{if(ws&&ws.readyState==1)ws.send(JSON.stringify(o))};
@@ -73,7 +74,7 @@ function royale(el){
     me=byId[myId];
     z={cx:MAP/2,cy:MAP/2,r:2200,ph:0,t:0,r0:2200,cx0:MAP/2,cy0:MAP/2,tx:MAP/2,ty:MAP/2};
     if(isHost)startPh();
-    bul=[];par=[];feed=[];T=0;grace=180;over=null;endd=null;spec=null;banner=null;lastShr=0;lastSt='';rocketReq=0;
+    bul=[];par=[];feed=[];hm=0;km=0;flash=0;dn=[];hd=[];rg=[];T=0;grace=180;over=null;endd=null;spec=null;banner=null;lastShr=0;lastSt='';rocketReq=0;
     cam.x=me.x-VW/2;cam.y=me.y-VH/2;
     phase='play';menu.hidden=true;lobby.hidden=true;c.hidden=false;
     st('Fly! Last helicopter flying wins.');
@@ -108,31 +109,36 @@ function royale(el){
     const kr=byId[by];if(kr&&kr!=e)kr.k++;
     feed.push({t:T,s:kr&&kr!=e?kr.name+' shot down '+e.name:by=='storm'?e.name+' was lost in the storm':e.name+' crashed'});
     if(online&&(e==me||(e.bot&&isHost)))send({t:'dead',id:e.id,by});
+    if(by==myId&&e!=me){km=70;kt=e.name;hm=0;sfx('win');shake=Math.max(shake,8);rg.push({x:e.x,y:e.y,r:10,l:30,m:30,c:'#ffd21f'})}
     if(e==me){over={win:0,place:e.place};ovT=T}
   }
   function hurt(e,d,by){
     if(!e.al||grace>0)return;
     if(e.sh>0){const a=Math.min(e.sh,d);e.sh-=a;d-=a}
     e.hp-=d;e.lh=by;
-    if(e==me){shake=Math.min(8,shake+2);if(T%4==0)sfx('hurt')}
+    if(e==me){shake=Math.min(10,shake+2.5);flash=Math.min(.5,flash+.16);if(T%4==0)sfx('hurt');const at=byId[by];if(at&&at!=me)hd.push({a:Math.atan2(at.y-me.y,at.x-me.x),l:50})}
     if(e.hp<=0)die(e,by);
   }
   function shoot(e){
     const err=e.bot?LV[lvl].err:.025,a=e.a+(R()-.5)*2*err;e.m=-e.m;
     const b={x:e.x+Math.cos(e.a)*26-Math.sin(e.a)*10*e.m,y:e.y+Math.sin(e.a)*26+Math.cos(e.a)*10*e.m,vx:Math.cos(a)*11,vy:Math.sin(a)*11,o:e.id,k:'g',l:52,d:6*(e.bot?LV[lvl].dm:1)};
     bul.push(b);
+    par.push({x:b.x,y:b.y,vx:Math.cos(a)*2,vy:Math.sin(a)*2,l:4,m:4,c:'#fff2b0',s:7});
+    par.push({x:e.x-Math.sin(e.a)*8*e.m,y:e.y+Math.cos(e.a)*8*e.m,vx:-Math.sin(e.a)*2*e.m+(R()-.5),vy:Math.cos(e.a)*2*e.m+(R()-.5),l:16,m:16,c:'#d4a017',s:1.6});
     if(online&&(e==me||(e.bot&&isHost)))send({t:'sh',o:b.o,x:b.x,y:b.y,vx:b.vx,vy:b.vy,k:'g',l:b.l,d:b.d});
-    if(e==me&&T%3==0)sfx('gun');
+    if(e==me){shake=Math.min(10,shake+.7);me.vx-=Math.cos(a)*.12;me.vy-=Math.sin(a)*.12;sfx('gun')}
+    else if(me&&Math.hypot(e.x-me.x,e.y-me.y)<500&&T%3==0)sfx('gun');
   }
   function rocket(e){
     e.rk--;e.rcd=70;const a=e.a;
     const b={x:e.x+Math.cos(a)*28,y:e.y+Math.sin(a)*28,vx:Math.cos(a)*7.5,vy:Math.sin(a)*7.5,o:e.id,k:'r',l:75,d:45};
     bul.push(b);
     if(online&&(e==me||(e.bot&&isHost)))send({t:'sh',o:b.o,x:b.x,y:b.y,vx:b.vx,vy:b.vy,k:'r',l:b.l,d:b.d});
-    if(e==me)sfx('rocket');
+    if(e==me){sfx('rocket');shake=Math.min(12,shake+4)}
   }
   function explode(b){
-    boom(b.x,b.y,22,'#ffb020');
+    boom(b.x,b.y,30,'#ffb020');rg.push({x:b.x,y:b.y,r:10,l:22,m:22,c:'#ffd27a'});shake=Math.max(shake,Math.hypot(b.x-(me?me.x:0),b.y-(me?me.y:0))<400?9:0);
+    if(b.o==myId)for(const e of E)if(e.al&&e.id!=b.o&&Math.hypot(e.x-b.x,e.y-b.y)<85){hm=18;sfx('hitm');dn.push({x:e.x,y:e.y-20,v:Math.round(b.d*(1-Math.hypot(e.x-b.x,e.y-b.y)/85*.7)),l:50,big:1})}
     if(me&&Math.hypot(b.x-me.x,b.y-me.y)<700)sfx('boom');
     for(const e of E){
       if(!e.al||e.id==b.o)continue;
@@ -226,7 +232,7 @@ function royale(el){
         if(!e.al||e.id==b.o)continue;
         if(Math.hypot(e.x-b.x,e.y-b.y)<rad){
           hit=1;
-          if(b.k=='g'){if(e==me||(e.bot&&isHost))hurt(e,b.d,b.o);spark(b.x,b.y)}
+          if(b.k=='g'){if(e==me||(e.bot&&isHost))hurt(e,b.d,b.o);spark(b.x,b.y);if(b.o==myId){hm=14;sfx('hitm');dn.push({x:e.x+(R()-.5)*16,y:e.y-20,v:Math.round(b.d),l:36});for(let q=0;q<4;q++)par.push({x:b.x,y:b.y,vx:(R()-.5)*6,vy:(R()-.5)*6,l:14,m:14,c:'#fff',s:2})}}
           break;
         }
       }
@@ -256,7 +262,8 @@ function royale(el){
     }
     for(let i=par.length-1;i>=0;i--){const p=par[i];p.x+=p.vx;p.y+=p.vy;p.vx*=.94;p.vy*=.94;if(--p.l<=0)par.splice(i,1)}
     while(feed.length&&T-feed[0].t>420)feed.shift();
-    if(shake>0)shake*=.85;
+    if(shake>0)shake*=.85;if(hm>0)hm--;if(km>0)km--;if(flash>0)flash-=.012;
+    dn=dn.filter(d=>{d.l--;d.y-=.7;return d.l>0});hd=hd.filter(d=>--d.l>0);rg=rg.filter(r=>{r.l--;r.r+=(r.m>25?4:3);return r.l>0});
     // camera
     let f=me;
     if(!me.al){if(!spec||!spec.al)spec=(byId[me.lh]&&byId[me.lh].al)?byId[me.lh]:nearest(me,1e9)||me;f=spec}
@@ -333,10 +340,12 @@ function royale(el){
     // bullets
     for(const b of bul){
       if(b.k=='r'){x.fillStyle='#ff7a1a';x.beginPath();x.arc(b.x,b.y,5,0,PI2);x.fill();x.fillStyle='#fff3a0';x.beginPath();x.arc(b.x,b.y,2.5,0,PI2);x.fill()}
-      else{x.strokeStyle=b.o==myId?'#ffd21f':'#fff';x.lineWidth=2.5;x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x-b.vx*1.8,b.y-b.vy*1.8);x.stroke()}
+      else{const mine=b.o==myId;x.strokeStyle=mine?'#ffd21f':'#ff9a9a';x.lineWidth=3;x.shadowColor=x.strokeStyle;x.shadowBlur=8;x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x-b.vx*2.2,b.y-b.vy*2.2);x.stroke();x.shadowBlur=0;x.strokeStyle='#fff';x.lineWidth=1.2;x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x-b.vx*1,b.y-b.vy*1);x.stroke()}
     }
     for(const p of par){x.globalAlpha=Math.max(0,p.l/p.m);x.fillStyle=p.c;x.beginPath();x.arc(p.x,p.y,p.s*(.5+p.l/p.m*.5),0,PI2);x.fill()}
     x.globalAlpha=1;
+    for(const r of rg){x.globalAlpha=Math.max(0,r.l/r.m);x.strokeStyle=r.c;x.lineWidth=4;x.beginPath();x.arc(r.x,r.y,r.r,0,PI2);x.stroke()}x.globalAlpha=1;
+    x.textAlign='center';for(const d of dn){x.globalAlpha=Math.min(1,d.l/18);x.font=`bold ${d.big?20:14}px system-ui`;x.lineWidth=3;x.strokeStyle='#000';x.strokeText('-'+d.v,d.x,d.y);x.fillStyle=d.big?'#ffb020':'#fff';x.fillText('-'+d.v,d.x,d.y)}x.globalAlpha=1;
     // names and bars
     x.font='bold 11px system-ui';x.textAlign='center';
     for(const e of E){
@@ -357,6 +366,17 @@ function royale(el){
       const a=Math.atan2(z.cy-me.y,z.cx-me.x);x.save();x.translate(VW/2+Math.cos(a)*70,VH/2+Math.sin(a)*70);x.rotate(a);
       x.fillStyle='#f0abfc';x.beginPath();x.moveTo(14,0);x.lineTo(-8,-9);x.lineTo(-8,9);x.fill();x.restore();
     }
+    // damage vignette and where it came from
+    if(flash>0){const g=x.createRadialGradient(VW/2,VH/2,VH*.3,VW/2,VH/2,VH*.9);g.addColorStop(0,'rgba(255,0,0,0)');g.addColorStop(1,`rgba(255,40,30,${flash})`);x.fillStyle=g;x.fillRect(0,0,VW,VH)}
+    for(const d of hd){x.save();x.translate(VW/2,VH/2);x.rotate(d.a);x.globalAlpha=Math.min(1,d.l/25);x.fillStyle='#ff3b30';x.beginPath();x.moveTo(120,0);x.lineTo(100,-12);x.lineTo(100,12);x.fill();x.restore()}x.globalAlpha=1;
+    // crosshair, hit marker, kill marker
+    {const mouse=performance.now()-ms.at<8000&&!tu.seen;const cx=mouse?ms.x:VW/2,cy=mouse?ms.y:VH/2;
+      if(mouse&&me.al){x.strokeStyle='#ffffffcc';x.lineWidth=2;x.beginPath();x.arc(cx,cy,9,0,PI2);x.moveTo(cx-16,cy);x.lineTo(cx-6,cy);x.moveTo(cx+16,cy);x.lineTo(cx+6,cy);x.moveTo(cx,cy-16);x.lineTo(cx,cy-6);x.moveTo(cx,cy+16);x.lineTo(cx,cy+6);x.stroke()}
+      if(hm>0&&me.al){const q=7+(14-Math.min(14,hm))*.6,o=5;x.strokeStyle='#fff';x.lineWidth=3;x.globalAlpha=Math.min(1,hm/8);x.beginPath();
+        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{x.moveTo(cx+sx*q,cy+sy*q);x.lineTo(cx+sx*(q+o),cy+sy*(q+o))});x.stroke();x.globalAlpha=1}
+      if(km>0){const a=Math.min(1,km/25),q=14+(70-km)*.25;x.globalAlpha=a;x.strokeStyle='#ff3b30';x.lineWidth=4;x.beginPath();
+        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{x.moveTo(cx+sx*q,cy+sy*q);x.lineTo(cx+sx*(q+12),cy+sy*(q+12))});x.stroke();x.globalAlpha=1;
+        txt('ELIMINATED '+kt,VW/2,VH/2-90,22,'#ff6b5a','center')}}
     // top left
     txt(`ALIVE ${al.length}`,12,26,20,'#fff');txt(`KILLS ${me.k}`,12,48,14,'#ffd21f');
     feed.slice(-4).forEach((f,i)=>txt(f.s,12,72+i*16,12,'#fff'));

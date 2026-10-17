@@ -27,7 +27,12 @@ const SFX=(()=>{
   }
   const lib={
     click:()=>tone(520,780,.06,'square',.12),
+    gun:()=>{noise(.06,3000,.12);tone(220,90,.05,'square',.06)},
+    hitm:()=>{tone(1500,900,.05,'square',.14);tone(2200,1800,.04,'triangle',.08,.02)},
+    boom:()=>{noise(.55,900,.5);tone(110,35,.5,'sawtooth',.3)},
+    rocket:()=>{noise(.4,1800,.25);tone(300,900,.35,'sawtooth',.1)},
     hop:()=>tone(300,620,.09,'square',.16),
+    boing:()=>{tone(200,800,.25,'sine',.28);tone(400,1200,.2,'triangle',.1,.05)},
     bump:()=>tone(150,90,.1,'triangle',.25),
     coin:()=>{tone(988,988,.07,'square',.16);tone(1319,1319,.16,'square',.16,.07)},
     splash:()=>{noise(.45,2600,.4);tone(500,120,.25,'sine',.15)},

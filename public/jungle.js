@@ -1,6 +1,7 @@
 // Jungle Dash: a side-scrolling temple escape. A giant boulder is rolling after you.
 // Left side of the screen / Space / Up: jump (press again in the air to double jump). Right side / Down: slide.
-// Hazards: logs, spike rows, stone totems, tall pillars (double jump), hanging vines (slide), bats (slide or jump), pits.
+// Hazards: logs, spike rows, stone totems, tall pillars (double jump), hanging vines (slide), bats (slide or jump), pits,
+// plus moving ones: rolling logs and snakes charge at you, darts fly in (slide or jump), rocks drop from above (shadow warns you).
 // Every hit lets the boulder gain on you; it slowly falls back while you run clean. Speed keeps climbing.
 // Gems are saved in the browser. Power-ups: magnet, shield, golden idol (smash through everything).
 function jungle(el){
@@ -11,7 +12,7 @@ function jungle(el){
   const sfx=n=>{try{window.SFX&&SFX.play(n)}catch(e){}};
   const R=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),PI=Math.PI;
   const hs=(i,s)=>{const v=Math.sin(i*127.1+(s||0)*311.7)*43758.5453;return v-Math.floor(v)};
-  const G=2300,JV=830,JV2=720,BG0=120,BL=9000;
+  const G=2300,JV=830,JV2=720,BG0=100,BL=9000;
   // ---- palettes: jungle by day, ruins at sunset, glowing night ----
   const hx=h=>{const n=parseInt(h.slice(1),16);return[n>>16,n>>8&255,n&255]};
   const PAL=[
@@ -42,7 +43,7 @@ function jungle(el){
   }
 
   /* ---------- level generation ---------- */
-  const spd=()=>300+Math.min(270,t*3.4);
+  const spd=()=>300+Math.min(330,t*4.4);
   function O(k,px,w,y0,y1,ex){const o=Object.assign({k,x:px,w,y0,y1,hi:0,hit:0},ex||{});
     o.hx0=px+(k=='log'?3:k=='vine'?2:4);o.hx1=px+w-(k=='log'?3:k=='vine'?2:4);obs.push(o);return o}
   function gemArc(cx,n,top){for(let i=0;i<n;i++){const u=n==1?0:(i/(n-1))*2-1;items.push({k:'gem',x:cx+u*(n-1)*18,y:64+(1-u*u)*(top||70),sp:R(0,6)})}}
@@ -58,13 +59,16 @@ function jungle(el){
     vine(px){O('vine',px,26,46,600);gemLine(px-34,4,24);return 26},
     pit(px){const w=pitW();pit(px,w);gemArc(px+w/2,Math.min(7,Math.floor(w/40)+2),76);return w},
     bat(px){O('bat',px,34,0,0,{by:60,ph:R(0,6)});gemLine(px-30,4,24);return 34},
+    roller(px){if(Math.random()<.5){O('roller',px,36,0,36,{vx:-210,rl:1});return 36}O('roller',px,40,0,22,{vx:-120,snake:1});return 40},
+    rock(px){O('rock',px,40,430,470,{state:0,vy:0});return 40},
+    dart(px){const hi=Math.random()<.6;O('dart',px,44,hi?32:6,hi?44:18,{vx:-330,hi});return 44},
     tower(px){O('tower',px,38,0,172);for(let i=0;i<3;i++)items.push({k:'gem',x:px+19,y:200+i*34,sp:R(0,6)});return 38}
   };
   function spawn(){
     const lv=clamp(t/80,0,1),px=nextX;let w=0,pat,pre=0,post=0;
     const pool=pn<2?[['gems',3],['log',3],['vine',2]]
       :[['gems',lv<.4?2:1],['log',3],['cluster',lv<.1?0:2],['totem',3],['spikes',3],['vine',3],['pit',lv<.05?0:3],
-        ['bat',lv<.12?0:3],['tower',lv<.25?0:2.5],['seq',lv<.15?0:3+3*lv]];
+        ['bat',lv<.12?0:3],['tower',lv<.25?0:2.5],['seq',lv<.15?0:3+3*lv],['roller',lv<.08?0:3],['rock',lv<.18?0:2.5],['dart',lv<.12?0:2.5]];
     const tot=pool.reduce((a,b)=>a+b[1],0);let r=Math.random()*tot;pat=pool[0][0];
     for(const[k,v]of pool){if(r<v){pat=k;break}r-=v}
     if(pat==lastPat&&pat!='gems')pat='gems';
@@ -79,15 +83,17 @@ function jungle(el){
       let prev='';
       for(let i=0;i<n;i++){
         let k=pick(kinds);if(k==prev)k=pick(kinds);prev=k;
-        const used=SINGLE[k](cx);cx+=used;if(i<n-1)cx+=spd()*.8+70;
+        const used=SINGLE[k](cx);cx+=used;if(i<n-1)cx+=spd()*.62+50;
       }
       w=cx-px;
     }else{
       if(pat=='bat'){pre=140;post=150}
+      if(pat=='roller'||pat=='rock'){pre=80;post=120}
+      if(pat=='dart'){post=100}
       if(pat=='tower'){pre=spd()*.4+50;post=spd()*.45}
       w=SINGLE[pat](px+pre);w+=pre;
     }
-    nextX=px+w+post+spd()*(.74-.18*lv)+90+R(0,70);
+    nextX=px+w+post+spd()*(.6-.2*lv)+60+R(0,50);
   }
   const pick=a=>a[rnd(a.length)];
 
@@ -112,7 +118,7 @@ function jungle(el){
   function hurt(why){
     if(inv>0||dash>0)return;lastHit=why;
     if(shield>0){shield=0;inv=1;sfx('bump');burst(PX,GY-h-30,['#7dd3fc','#fff'],14);return}
-    bg-=why=='pit'?60:50;inv=1.15;stumble=.3;shake=.32;sfx('crash');
+    bg-=why=='pit'?65:55;inv=1.15;stumble=.3;shake=.32;sfx('crash');
     burst(PX,GY-h-30,['#ffd21f','#e63027','#fff'],12);
     if(bg<=0){over=true;deadT=0;bg=0;sfx('lose')}
   }
@@ -128,7 +134,7 @@ function jungle(el){
     if(inv>0)inv-=dt;if(stumble>0)stumble-=dt;if(shield>0&&false)shield=0;
     if(magnet>0)magnet-=dt;if(dash>0){dash-=dt;if(dash<=0)inv=Math.max(inv,1)}
     if(buf>0)buf-=dt;
-    bg=Math.min(BG0,bg+9*dt);
+    bg=Math.min(BG0,bg+1.5*dt);
     while(nextX<cam+W+420)spawn();
     // physics
     const ground=onGround(cam);
@@ -145,11 +151,21 @@ function jungle(el){
     }
     if(sl>0)sl-=dt;
     if(h==0&&vy==0&&ground){dustT-=dt;if(dustT<=0){dustT=.09;puff(1)}}
+    // moving hazards: rolling logs, snakes and darts come at you, rocks drop from above
+    for(const o of obs){
+      if(o.vx){o.x+=o.vx*dt;o.hx0=o.x+4;o.hx1=o.x+o.w-4}
+      if(o.k=='rock'){
+        if(o.state==0&&o.x-cam<s*1.05+60){o.state=1;o.vy=0}
+        if(o.state==1){o.vy+=2300*dt;o.y0-=o.vy*dt;o.y1=o.y0+40;
+          if(o.y0<=0){o.y0=0;o.y1=40;o.state=2;shake=Math.max(shake,.15);sfx('bump');burst(o.x-cam+PX+20,GY-4,['#c9b99a','#8f8a7e'],10)}}
+      }
+    }
     // collisions with hazards
     const feet=h,ph=(sl>0&&h<=0)?26:52,p0=cam-10,p1=cam+10;
     for(const o of obs){
       if(o.dead)continue;
       let y0=o.y0,y1=o.y1;
+      if(o.k=='rock'&&o.state==0)continue;
       if(o.k=='bat'){const b=Math.sin(time*3+o.ph)*8;y0=o.by+b-4;y1=o.by+b+16}
       if(p1>o.hx0&&p0<o.hx1&&feet<y1&&feet+ph>y0){
         if(dash>0){o.dead=1;burst(o.x-cam+PX,GY-30,['#9aa0ad','#6b7180','#c8a45a'],14);sfx('bump');gems++;total++}
@@ -169,7 +185,7 @@ function jungle(el){
       }
     }
     obs=obs.filter(o=>!o.dead&&o.x+o.w>cam-200);pits=pits.filter(p=>p.x+p.w>cam-200);items=items.filter(i=>!i.gone&&i.x>cam-200);
-    if(bg<55&&Math.random()<dt*6)shake=Math.max(shake,.08);
+    if(bg<45&&Math.random()<dt*6)shake=Math.max(shake,.08);
     hud();
   }
 
@@ -257,6 +273,28 @@ function jungle(el){
         x.fillStyle='#e63027';for(let i=-1;i<=1;i++){x.beginPath();x.moveTo(ex+i*7-3,ey+16);x.lineTo(ex+i*7,ey+24);x.lineTo(ex+i*7+3,ey+16);x.fill()}
         // warning leaves on the way down
         x.fillStyle='#3f9a52';for(let k=0;k<5;k++){const ly=40+k*(ey-60)/5;x.beginPath();x.ellipse(px+13+(k%2?9:-9),ly,9,4,k%2?.5:-.5,0,7);x.fill()}
+      }else if(o.k=='roller'){
+        if(o.snake){
+          const by=GY-4;x.strokeStyle='#2f9e44';x.lineWidth=9;x.lineCap='round';x.beginPath();
+          for(let i=0;i<=10;i++){const sx=px+i*4,sy=by-6-Math.sin(time*9+i*.9)*5;i?x.lineTo(sx,sy):x.moveTo(sx,sy)}x.stroke();
+          x.strokeStyle='#f1c40f';x.lineWidth=3;x.setLineDash([4,8]);x.stroke();x.setLineDash([]);
+          x.fillStyle='#2f9e44';x.beginPath();x.ellipse(px-2,by-10,8,6,0,0,7);x.fill();x.fillStyle='#fff';x.fillRect(px-5,by-13,3,3);x.fillStyle='#e63027';x.fillRect(px-12,by-9,6,2);
+        }else{
+          x.save();x.translate(px+18,GY-18);x.rotate(-time*(8));x.fillStyle='#6b4423';x.beginPath();x.arc(0,0,18,0,7);x.fill();
+          x.strokeStyle='#d6a96b';x.lineWidth=2;for(let r=4;r<18;r+=5){x.beginPath();x.arc(0,0,r,0,7);x.stroke()}
+          x.fillStyle='#e63027';x.fillRect(-2,-18,4,6);x.restore();
+        }
+      }else if(o.k=='rock'){
+        if(o.state==1){const f=clamp(1-o.y0/430,0,1);x.fillStyle=`rgba(0,0,0,${.15+f*.35})`;x.beginPath();x.ellipse(px+20,GY+1,8+f*20,3+f*3,0,0,7);x.fill();
+          x.fillStyle='#e63027';x.font='bold 18px system-ui';x.textAlign='center';x.fillText('!',px+20,GY-60)}
+        if(o.state>0){const cy=GY-o.y0-20;x.fillStyle='#8f8a7e';x.beginPath();x.moveTo(px,cy+20);x.lineTo(px+4,cy-10);x.lineTo(px+18,cy-22);x.lineTo(px+34,cy-12);x.lineTo(px+40,cy+20);x.closePath();x.fill();
+          x.fillStyle='#b5b0a2';x.beginPath();x.moveTo(px+4,cy-10);x.lineTo(px+18,cy-22);x.lineTo(px+22,cy);x.lineTo(px+8,cy+6);x.fill();
+          x.strokeStyle='#5b574f';x.lineWidth=2;x.beginPath();x.moveTo(px+22,cy-18);x.lineTo(px+18,cy+2);x.lineTo(px+28,cy+14);x.stroke()}
+      }else if(o.k=='dart'){
+        const cy=GY-(o.y0+o.y1)/2;x.strokeStyle='#ffb347';x.globalAlpha=.4;x.lineWidth=3;x.beginPath();x.moveTo(px+o.w,cy);x.lineTo(px+o.w+50,cy);x.stroke();x.globalAlpha=1;
+        x.strokeStyle='#6b4423';x.lineWidth=3;x.beginPath();x.moveTo(px+6,cy);x.lineTo(px+o.w,cy);x.stroke();
+        x.fillStyle='#d8d2bd';x.beginPath();x.moveTo(px-2,cy);x.lineTo(px+10,cy-6);x.lineTo(px+10,cy+6);x.fill();
+        x.fillStyle='#e63027';x.fillRect(px+o.w-8,cy-5,8,3);x.fillRect(px+o.w-8,cy+2,8,3);
       }else if(o.k=='bat'){
         const b=Math.sin(time*3+o.ph)*8,by=GY-(o.by+b),fl=Math.sin(time*18+o.ph)*9;
         x.fillStyle='#1f1630';x.beginPath();x.ellipse(px+17,by,9,8,0,0,7);x.fill();
@@ -264,6 +302,12 @@ function jungle(el){
         x.fillStyle='#ff4d4d';x.fillRect(px+13,by-3,3,3);x.fillRect(px+19,by-3,3,3);
         x.fillStyle='#fff';x.fillRect(px+14,by+3,2,3);x.fillRect(px+19,by+3,2,3);
       }
+    }
+  }
+  function warnings(){
+    for(const o of obs){
+      if(o.k=='dart'||(o.k=='roller'&&o.x-cam+PX>W-4)){const px=o.x-cam+PX;if(px<W-4)continue;
+        if(Math.floor(time*8)%2)continue;const cy=GY-(o.y0+o.y1)/2;x.fillStyle='#e63027';x.beginPath();x.moveTo(W-8,cy-12);x.lineTo(W-26,cy);x.lineTo(W-8,cy+12);x.fill();x.fillStyle='#fff';x.font='bold 14px system-ui';x.textAlign='center';x.fillText('!',W-12,cy+5)}
     }
   }
   function drawItems(){
@@ -292,7 +336,7 @@ function jungle(el){
     x.beginPath();x.moveTo(-r*.7,-r*.1);x.lineTo(-r*.2,-r*.3);x.lineTo(r*.1,-r*.1);x.lineTo(r*.5,-r*.5);x.moveTo(r*.1,-r*.1);x.lineTo(r*.2,r*.4);x.lineTo(r*.6,r*.5);x.moveTo(-r*.3,r*.4);x.lineTo(-r*.1,r*.7);x.stroke();
     x.fillStyle='#4b453c';for(let i=0;i<6;i++){x.beginPath();x.arc(Math.cos(i*1.9)*r*.6,Math.sin(i*1.9)*r*.55,6+i%3*3,0,7);x.fill()}
     x.restore();
-    if(bg<70){x.fillStyle='#fff';x.globalAlpha=.35;for(let i=0;i<4;i++)x.fillRect(cxp+r*.6+R(0,30),GY-R(2,26),R(10,24),3);x.globalAlpha=1}
+    if(bg<60){x.fillStyle='#fff';x.globalAlpha=.35;for(let i=0;i<4;i++)x.fillRect(cxp+r*.6+R(0,30),GY-R(2,26),R(10,24),3);x.globalAlpha=1}
   }
   function figure(ph,air,slid,fl){
     // drawn with feet at (0,0), facing right, y up is negative
@@ -358,7 +402,7 @@ function jungle(el){
     const B=biome(cam);
     x.save();
     if(shake>0)x.translate(R(-3,3),R(-3,3));
-    sky(B);far(B);mid(B);ground(B);drawObs(B);drawItems();boulder();player();
+    sky(B);far(B);mid(B);ground(B);drawObs(B);drawItems();warnings();boulder();player();
     parts.forEach(q=>{x.globalAlpha=clamp(q.life*2.2,0,1);x.fillStyle=q.col;const px=q.w?q.x-cam+PX:q.x;x.fillRect(px-q.r/2,q.y-q.r/2,q.r,q.r)});x.globalAlpha=1;
     if(dash>0){x.strokeStyle='rgba(255,230,120,.5)';x.lineWidth=2;for(let i=0;i<9;i++){const ly=40+hs(i,Math.floor(time*10))*230,lx=hs(i,2)*W;x.beginPath();x.moveTo(lx,ly);x.lineTo(lx+60,ly);x.stroke()}}
     fg(B);
@@ -366,7 +410,7 @@ function jungle(el){
     hudDraw();
     if(!started){x.fillStyle='#000a';x.fillRect(0,H/2-90,W,170);text('JUNGLE DASH',W/2,H/2-30,52,'#ffd21f');
       x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText('Outrun the boulder! Tap or press any key to start',W/2,H/2+4);
-      x.fillText('Left side / Space: jump (twice for a double jump)   Right side / Down: slide',W/2,H/2+30);x.fillStyle='#b9f6ca';x.fillText('Tall pillars need a double jump. Duck under vines.',W/2,H/2+56)}
+      x.fillText('Left side / Space: jump (twice for a double jump)   Right side / Down: slide',W/2,H/2+30);x.fillStyle='#b9f6ca';x.fillText('Watch for rolling logs, snakes, darts and falling rocks. Two hits close together and the boulder gets you.',W/2,H/2+56)}
     if(over&&deadT>.5){x.fillStyle='#000b';x.fillRect(0,H/2-90,W,180);text('CRUSHED!',W/2,H/2-30,54,'#ffd21f');text(score()+' pts',W/2,H/2+14,32,'#fff');
       x.font='16px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText('Best '+best('jungle',score())+'   '+gems+' gems   Tap or press Enter to retry',W/2,H/2+50)}
   }

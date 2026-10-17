@@ -228,6 +228,10 @@ export default {
     const headers = new Headers(res.headers);
     headers.set("X-Content-Type-Options", "nosniff");
     headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Always fetch fresh pages and scripts so an old cached page never mixes with new scripts (that caused blank screens).
+    const ct = headers.get("Content-Type") || "";
+    if (/text\/html|javascript|css/.test(ct) || url.pathname === "/" || url.pathname.startsWith("/admin")) headers.set("Cache-Control", "no-cache");
+    if (url.pathname.startsWith("/admin") || /text\/html/.test(ct)) headers.set("Cache-Control", "no-store");
     return new Response(res.body, { status: res.status, headers });
   },
 };
