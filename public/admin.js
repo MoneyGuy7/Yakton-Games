@@ -117,6 +117,54 @@
       tg.disabled = false
     };
 
+    /* warning notice */
+    const nsec = el('section', { class: 'asec' });
+    nsec.append(el('h2', {}, 'Warning notice'), el('p', { class: 'sm' }, 'Visitors see this once, with a warning icon and an Accept button.'));
+    const non = el('input', { type: 'checkbox', id: 'non' }), nl = el('label', { for: 'non' }, ' Show the warning to visitors');
+    const ntx = el('textarea', { rows: '4', maxlength: '1000', placeholder: 'Warning text', 'aria-label': 'Warning text' });
+    const nre = el('input', { type: 'checkbox', id: 'nre', checked: '' }), nrl = el('label', { for: 'nre' }, ' Show again to people who already accepted');
+    const nsv = el('button', { type: 'button', class: 'abtn' }, 'Save warning');
+    nsec.append(el('div', { class: 'arow' }, ''), ntx, nsv); nsec.children[2].append(non, nl);
+    const r2 = el('div', { class: 'arow' }); r2.append(nre, nrl); nsec.insertBefore(r2, nsv); app.append(nsec);
+    get('/api/notice').then(n => { non.checked = !!n.on; ntx.value = n.text || '' }).catch(() => { });
+    nsv.onclick = async () => { try { await post('/api/admin/notice', { on: non.checked, text: ntx.value, reshow: nre.checked }); toast('Warning saved') } catch (x) { toast(x.message); if (/logged/i.test(x.message)) init() } };
+
+    /* feedback */
+    const fsec = el('section', { class: 'asec' });
+    fsec.append(el('h2', {}, 'Feedback'));
+    const fbar = el('div', { class: 'arow' }), fsel = el('select', { 'aria-label': 'Filter by game' }), fcount = el('span', { class: 'sm' });
+    const fdl = el('button', { type: 'button', class: 'abtn' }, 'Download all (CSV)'), fdt = el('button', { type: 'button', class: 'ghost' }, 'Download (text)');
+    const fclr = el('button', { type: 'button', class: 'ghost warn' }, 'Delete all');
+    fbar.append(fsel, fcount, fdl, fdt, fclr);
+    const flist = el('div', {}); fsec.append(fbar, flist); app.append(fsec);
+    let fb = [];
+    const when = t => new Date(t).toLocaleString();
+    const fpaint = () => {
+      const games = [...new Set(fb.map(x => x.game))].sort(), cur = fsel.value || 'All';
+      fsel.innerHTML = ''; ['All', ...games].forEach(g => { const o = el('option', { value: g }, g === 'All' ? 'All games' : g + ' (' + fb.filter(x => x.game === g).length + ')'); fsel.append(o) });
+      fsel.value = ['All', ...games].includes(cur) ? cur : 'All';
+      const shown = fb.filter(x => fsel.value === 'All' || x.game === fsel.value);
+      fcount.textContent = shown.length + ' of ' + fb.length + ' shown';
+      flist.innerHTML = '';
+      if (!shown.length) flist.append(el('p', { class: 'sm' }, 'No feedback yet.'));
+      shown.forEach(x => {
+        const it = el('div', { class: 'fbitem' }), m = el('div', { class: 'fbmeta' }), del = el('button', { type: 'button', class: 'ghost warn' }, 'Delete');
+        m.append(el('b', {}, x.game), del);
+        del.onclick = async () => { try { await post('/api/admin/feedback/delete', { id: x.id }); fb = fb.filter(y => y.id !== x.id); fpaint() } catch (e) { toast(e.message) } };
+        it.append(m, el('p', {}, x.text), el('span', { class: 'sm' }, (x.name ? x.name + ' · ' : '') + when(x.time)));
+        flist.append(it)
+      })
+    };
+    const fload = async () => { try { const r = await fetch('/api/admin/feedback', { cache: 'no-store' }); if (r.status === 401) return init(); fb = (await r.json()).items || []; fpaint() } catch (e) { flist.textContent = 'Could not load feedback.' } };
+    fsel.onchange = fpaint;
+    const save = (name, type, data) => { const a = el('a', { href: URL.createObjectURL(new Blob([data], { type })), download: name }); document.body.append(a); a.click(); a.remove() };
+    const stamp = () => new Date().toISOString().slice(0, 10);
+    const csv = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    fdl.onclick = () => { if (!fb.length) return toast('No feedback to download'); save('yakton-feedback-' + stamp() + '.csv', 'text/csv', '\ufeffGame,Feedback,Name,Date\r\n' + fb.map(x => [x.game, x.text, x.name, new Date(x.time).toISOString()].map(csv).join(',')).join('\r\n')) };
+    fdt.onclick = () => { if (!fb.length) return toast('No feedback to download'); save('yakton-feedback-' + stamp() + '.txt', 'text/plain', fb.map(x => 'GAME: ' + x.game + '\nFEEDBACK: ' + x.text + '\nFROM: ' + (x.name || 'Anonymous') + '\nDATE: ' + when(x.time) + '\n').join('\n----------------------------------------\n\n')) };
+    fclr.onclick = async () => { if (!fb.length || !confirm('Delete ALL feedback? Download it first if you want to keep it.')) return; try { for (let i = 0; i < 10; i++) { await post('/api/admin/feedback/clear'); } } catch (e) { toast(e.message) } fload() };
+    fload();
+
     /* currencies */
     const csec = el('section', { class: 'asec' });
     csec.append(el('h2', {}, 'Coins and currency'), el('p', { class: 'sm' }, 'These edit the saved data in this browser. Close the game tab first, or the game may overwrite the change.'));

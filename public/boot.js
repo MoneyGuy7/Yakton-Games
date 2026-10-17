@@ -67,3 +67,45 @@ addEventListener('pageshow',e=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)ensureVisible()});
 // If the game list ever fails to build, show a reload button instead of an empty page.
 setTimeout(()=>{if(!$('#grid').children.length&&!document.querySelector('.rfail')){const d=mk('div',{class:'rfail'});d.append(mk('p',{},'Something went wrong loading the games.'));const b=mk('button',{type:'button'},'Reload');b.onclick=()=>location.reload();d.append(b);$('main').append(d)}},1500);
+
+// Feedback: a tab on the right edge of the game area, a button under the game, and one by the categories.
+(function feedbackUI(){
+  const box=mk('div',{id:'fbm',hidden:'',role:'dialog','aria-label':'Send feedback'});
+  box.innerHTML=`<form class="fbbox"><h2>Send feedback</h2><p class="sm" id="fbg"></p>
+    <textarea id="fbt" maxlength="1000" rows="5" placeholder="What did you like, what is broken, what should we add?" aria-label="Feedback"></textarea>
+    <input id="fbn" maxlength="40" placeholder="Your name (optional)" aria-label="Your name">
+    <p class="sm" id="fbs" aria-live="polite"></p>
+    <div class="fbrow"><button type="button" class="ghost" id="fbx">Cancel</button><button type="submit" class="abtn" id="fbgo">Send</button></div></form>`;
+  document.body.append(box);
+  const f=box.querySelector('form'),t=$('#fbt'),s=$('#fbs'),go=$('#fbgo');
+  const game=()=>{const g=G.find(x=>x.id==cur);return g?{game:g.name,gameId:g.id}:{game:'General (home page)',gameId:''}};
+  const open=v=>{box.hidden=!v;if(v){$('#fbg').textContent='About: '+game().game;s.textContent='';t.focus();if(document.fullscreenElement)document.exitFullscreen()}};
+  const mkBtn=(cls,txt)=>{const b=mk('button',{type:'button',class:cls},txt);b.onclick=()=>open(1);return b};
+  $('.bar').append(mkBtn('','Feedback'));
+  $('#stage').append(mkBtn('fbtab','💬 Feedback'));
+  const hint=mk('p',{class:'fbhome'});hint.append('Got an idea or found a bug? ',mkBtn('fblink','Send feedback'));
+  $('#chips').before(hint);
+  $('#fbx').onclick=()=>open(0);box.onclick=e=>{if(e.target==box)open(0)};
+  addEventListener('keydown',e=>{if(e.key=='Escape'&&!box.hidden)open(0)});
+  // keep game keys (WASD, M) from firing while typing
+  box.addEventListener('keydown',e=>e.stopPropagation());
+  f.onsubmit=async e=>{e.preventDefault();go.disabled=true;s.textContent='Sending…';
+    try{const r=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...game(),text:t.value,name:$('#fbn').value})});
+      const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Could not send');
+      t.value='';s.textContent='Thank you! Feedback sent.';setTimeout(()=>open(0),1100)}
+    catch(x){s.textContent=x.message}go.disabled=false};
+})();
+
+// Warning notice: shown once to each visitor (again whenever the admin saves a new one). Text is set in the admin panel.
+(function noticeUI(){
+  fetch('/api/notice',{cache:'no-store'}).then(r=>r.json()).then(n=>{
+    if(!n||!n.on||!String(n.text||'').trim())return;
+    let seen='';try{seen=localStorage.getItem('yk-notice')}catch(e){}
+    if(seen===String(n.v))return;
+    const o=mk('div',{id:'wn',role:'alertdialog','aria-modal':'true','aria-label':'Warning'}),bx=mk('div',{class:'wnbox'});
+    const ic=mk('div',{class:'wnico','aria-hidden':'true'},'⚠'),tx=mk('p',{class:'wntx'},n.text),ok=mk('button',{type:'button',class:'abtn'},'Accept');
+    bx.append(ic,mk('h2',{},'Warning'),tx,ok);o.append(bx);document.body.append(o);ok.focus();
+    const swallow=e=>{if(o.isConnected&&e.key!='Tab')e.stopPropagation()};addEventListener('keydown',swallow,true);
+    ok.onclick=()=>{try{localStorage.setItem('yk-notice',String(n.v))}catch(e){}removeEventListener('keydown',swallow,true);o.remove()};
+  }).catch(()=>{});
+})();

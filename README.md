@@ -14,6 +14,8 @@ Open `/admin` (there is an "Admin" button at the bottom of the site and on the d
 
 What it does:
 - **Downtime.** One button puts the whole site (pages, rooms, lobbies) behind a downtime screen, with an optional message. You can still browse the site while logged in. Visitors who already have the site open see a banner.
+- **Warning notice.** First-time visitors see a warning (icon, your text, Accept). Edit the text, turn it on or off, and choose whether people who already accepted see it again, in the admin panel.
+- **Feedback.** Visitors send feedback from the Feedback tab beside any game, the Feedback button under it, or the link above the categories. In the admin panel you can filter it by game, delete entries, and download everything as CSV or text (game, feedback, name, date). Stored in the STATE Durable Object (max 2000 entries, 5 per visitor per 10 minutes).
 - **Coins and unlocks.** Add, set or zero the coins/gems/cash of every game that has them, max the Drift King and Pizza Rush Garages, beat every Cube Dash level (all cube colors), unlock all Pixel Hopper and Candy Snip levels, clear high scores, or reset data. Game saves live in the browser, so these changes apply to the browser you use the panel in.
 
 ## Deploy from GitHub

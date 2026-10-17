@@ -111,6 +111,28 @@ export class SiteState {
       }
       return json({ locked: t.until > now, retry: Math.max(0, Math.ceil((t.until - now) / 1000)) });
     }
+    if (u.pathname === "/notice-get") return json((await s.get("notice")) || { on: true, v: 1, text: "This site is still being worked on. Games may have bugs, and your saved progress may be reset." });
+    if (u.pathname === "/notice-set") { const b = await req.json(); await s.put("notice", { on: b.on === true, text: String(b.text || "").slice(0, 1000), v: Date.now() }); return json({ ok: true }); }
+    if (u.pathname === "/notice-raw") { const b = await req.json(); await s.put("notice", { on: b.on === true, text: String(b.text || "").slice(0, 1000), v: b.v }); return json({ ok: true }); }
+    // Feedback: stored as fb:<time>:<rand>. Max 2000 entries, 5 per IP per 10 minutes.
+    if (u.pathname === "/fb-add") {
+      const b = await req.json(), now = Date.now(), rk = "fr:" + (b.ip || "x");
+      let r = (await s.get(rk)) || { n: 0, t: now };
+      if (now - r.t > 600000) r = { n: 0, t: now };
+      if (r.n >= 5) return json({ ok: false, error: "You have sent a lot of feedback. Please try again in a few minutes." });
+      const count = (await s.list({ prefix: "fb:", limit: 2001 })).size;
+      if (count >= 2000) return json({ ok: false, error: "Feedback inbox is full right now." });
+      r.n++; await s.put(rk, r);
+      const id = "fb:" + String(now).padStart(14, "0") + ":" + Math.random().toString(36).slice(2, 7);
+      await s.put(id, { game: b.game, gameId: b.gameId, name: b.name, text: b.text, time: now });
+      return json({ ok: true });
+    }
+    if (u.pathname === "/fb-list") {
+      const m = await s.list({ prefix: "fb:", reverse: true, limit: 2000 });
+      return json({ items: [...m].map(([id, v]) => ({ id, ...v })) });
+    }
+    if (u.pathname === "/fb-del") { await s.delete((await req.json()).id); return json({ ok: true }); }
+    if (u.pathname === "/fb-clear") { const m = await s.list({ prefix: "fb:" }); await s.delete([...m.keys()].slice(0, 128)); if (m.size > 128) await s.delete([...m.keys()].slice(128, 256)); return json({ ok: true, left: Math.max(0, m.size - 256) }); }
     return new Response("Not found", { status: 404 });
   }
 }
@@ -155,7 +177,12 @@ async function api(request, env, url) {
     const s = await getStatus(env);
     return jres({ down: s.down, message: s.message, bypass: s.down ? await isAdmin(request, env) : false });
   }
+  if (p === "/api/notice" && !post) return jres(await (await siteDO(env).fetch("https://state/notice-get")).json());
   if (p === "/api/admin/me") return jres({ admin: await isAdmin(request, env), configured: !!env.ADMIN_PASSWORD });
+  if (p === "/api/admin/feedback" && !post) {
+    if (!(await isAdmin(request, env))) return jres({ error: "Not logged in" }, 401);
+    return jres(await (await siteDO(env).fetch("https://state/fb-list")).json());
+  }
   if (!post) return jres({ error: "Not found" }, 404);
   // Admin writes must come from this site and be JSON (blocks cross-site form posts).
   const origin = request.headers.get("Origin");
@@ -163,6 +190,28 @@ async function api(request, env, url) {
   let body = {};
   try { body = await request.json(); } catch { /* empty body is fine for logout */ }
 
+  if (p === "/api/feedback") {
+    const clean = (t, n) => String(t || "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, n);
+    const text = clean(body.text, 1000);
+    if (text.length < 2) return jres({ error: "Please write a little feedback first." }, 400);
+    const ip = request.headers.get("CF-Connecting-IP") || "x";
+    const r = await (await siteDO(env).fetch("https://state/fb-add", { method: "POST", body: JSON.stringify({ ip, game: clean(body.game, 60) || "General", gameId: clean(body.gameId, 30), name: clean(body.name, 40), text }) })).json();
+    return r.ok ? jres({ ok: true }) : jres({ error: r.error }, 429);
+  }
+  if (p === "/api/admin/feedback/delete" || p === "/api/admin/feedback/clear") {
+    if (!(await isAdmin(request, env))) return jres({ error: "Not logged in" }, 401);
+    const clear = p.endsWith("clear");
+    await siteDO(env).fetch("https://state/" + (clear ? "fb-clear" : "fb-del"), { method: "POST", body: JSON.stringify({ id: String(body.id || "") }) });
+    return jres({ ok: true });
+  }
+  if (p === "/api/admin/notice") {
+    if (!(await isAdmin(request, env))) return jres({ error: "Not logged in" }, 401);
+    const text = String(body.text || "").slice(0, 1000);
+    const cur = await (await siteDO(env).fetch("https://state/notice-get")).json();
+    if (body.reshow === false) await siteDO(env).fetch("https://state/notice-raw", { method: "POST", body: JSON.stringify({ on: body.on === true, text, v: cur.v }) });
+    else await siteDO(env).fetch("https://state/notice-set", { method: "POST", body: JSON.stringify({ on: body.on === true, text }) });
+    return jres({ ok: true, ...(await (await siteDO(env).fetch("https://state/notice-get")).json()) });
+  }
   if (p === "/api/admin/login") {
     if (!env.ADMIN_PASSWORD) return jres({ error: "ADMIN_PASSWORD is not set on the worker." }, 503);
     const ip = request.headers.get("CF-Connecting-IP") || "x";
